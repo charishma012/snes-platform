@@ -51,25 +51,43 @@
 
                 <!-- Desktop Navigation Links -->
                 <div class="hidden md:flex items-center space-x-1 lg:space-x-4">
-                    <a href="#" class="px-3 py-2 text-sm font-medium text-slate-600 hover:text-sky-600 hover:bg-sky-50 rounded-lg transition-colors">
+                    <a href="{% url 'notes:home' %}" class="px-3 py-2 text-sm font-medium text-slate-600 hover:text-sky-600 hover:bg-sky-50 rounded-lg transition-colors">
                         Browse Notes
                     </a>
-                    <a href="#" class="px-3 py-2 text-sm font-medium text-slate-600 hover:text-sky-600 hover:bg-sky-50 rounded-lg transition-colors">
-                        Upload
-                    </a>
-                    <a href="#" class="px-3 py-2 text-sm font-medium text-slate-600 hover:text-sky-600 hover:bg-sky-50 rounded-lg transition-colors">
-                        My Study List
-                    </a>
+                    {% if user.is_authenticated %}
+                        <a href="#" class="px-3 py-2 text-sm font-medium text-slate-600 hover:text-sky-600 hover:bg-sky-50 rounded-lg transition-colors">
+                            Upload Note
+                        </a>
+                        <a href="#" class="px-3 py-2 text-sm font-medium text-slate-600 hover:text-sky-600 hover:bg-sky-50 rounded-lg transition-colors">
+                            My Study List
+                        </a>
+                    {% endif %}
                 </div>
 
                 <!-- Auth / CTA Actions -->
                 <div class="hidden md:flex items-center space-x-3">
-                    <a href="#" class="px-4 py-2 text-sm font-medium text-slate-700 hover:text-sky-600 rounded-lg transition-colors">
-                        Login
-                    </a>
-                    <a href="#" class="px-4 py-2 text-sm font-medium text-white bg-sky-600 hover:bg-sky-700 rounded-lg shadow-sm hover:shadow transition-all">
-                        Register
-                    </a>
+                    {% if user.is_authenticated %}
+                        <div class="flex items-center space-x-2 text-sm font-medium text-slate-700 bg-slate-100 px-3 py-1.5 rounded-lg border border-slate-200">
+                            <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
+                            <span class="text-slate-900 font-semibold">{{ user.username }}</span>
+                        </div>
+                        <form method="POST" action="{% url 'notes:logout' %}" class="inline">
+                            {% csrf_token %}
+                            <button type="submit" class="px-3.5 py-2 text-sm font-medium text-slate-600 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors flex items-center space-x-1">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                                </svg>
+                                <span>Logout</span>
+                            </button>
+                        </form>
+                    {% else %}
+                        <a href="{% url 'notes:login' %}" class="px-4 py-2 text-sm font-medium text-slate-700 hover:text-sky-600 rounded-lg transition-colors">
+                            Login
+                        </a>
+                        <a href="{% url 'notes:register' %}" class="px-4 py-2 text-sm font-medium text-white bg-sky-600 hover:bg-sky-700 rounded-lg shadow-sm hover:shadow transition-all">
+                            Register
+                        </a>
+                    {% endif %}
                 </div>
 
                 <!-- Mobile Menu Button -->
@@ -85,23 +103,38 @@
             <!-- Mobile Navigation Drawer -->
             <div id="mobile-menu" class="hidden md:hidden pb-4 pt-2 border-t border-slate-100">
                 <div class="flex flex-col space-y-1">
-                    <a href="#" class="px-3 py-2 text-base font-medium text-slate-600 hover:text-sky-600 hover:bg-sky-50 rounded-lg">
+                    <a href="{% url 'notes:home' %}" class="px-3 py-2 text-base font-medium text-slate-600 hover:text-sky-600 hover:bg-sky-50 rounded-lg">
                         Browse Notes
                     </a>
-                    <a href="#" class="px-3 py-2 text-base font-medium text-slate-600 hover:text-sky-600 hover:bg-sky-50 rounded-lg">
-                        Upload
-                    </a>
-                    <a href="#" class="px-3 py-2 text-base font-medium text-slate-600 hover:text-sky-600 hover:bg-sky-50 rounded-lg">
-                        My Study List
-                    </a>
-                    <div class="pt-2 border-t border-slate-100 flex flex-col space-y-2">
-                        <a href="#" class="px-3 py-2 text-center text-base font-medium text-slate-700 hover:text-sky-600 rounded-lg">
-                            Login
+                    {% if user.is_authenticated %}
+                        <a href="#" class="px-3 py-2 text-base font-medium text-slate-600 hover:text-sky-600 hover:bg-sky-50 rounded-lg">
+                            Upload Note
                         </a>
-                        <a href="#" class="px-3 py-2 text-center text-base font-medium text-white bg-sky-600 hover:bg-sky-700 rounded-lg shadow-sm">
-                            Register
+                        <a href="#" class="px-3 py-2 text-base font-medium text-slate-600 hover:text-sky-600 hover:bg-sky-50 rounded-lg">
+                            My Study List
                         </a>
-                    </div>
+                        <div class="pt-2 border-t border-slate-100 flex flex-col space-y-2">
+                            <div class="px-3 py-1.5 text-sm font-semibold text-slate-700 bg-slate-100 rounded-lg flex items-center space-x-2">
+                                <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
+                                <span>Signed in as {{ user.username }}</span>
+                            </div>
+                            <form method="POST" action="{% url 'notes:logout' %}">
+                                {% csrf_token %}
+                                <button type="submit" class="w-full text-left px-3 py-2 text-base font-medium text-rose-600 hover:bg-rose-50 rounded-lg transition-colors">
+                                    Logout
+                                </button>
+                            </form>
+                        </div>
+                    {% else %}
+                        <div class="pt-2 border-t border-slate-100 flex flex-col space-y-2">
+                            <a href="{% url 'notes:login' %}" class="px-3 py-2 text-center text-base font-medium text-slate-700 hover:text-sky-600 rounded-lg">
+                                Login
+                            </a>
+                            <a href="{% url 'notes:register' %}" class="px-3 py-2 text-center text-base font-medium text-white bg-sky-600 hover:bg-sky-700 rounded-lg shadow-sm">
+                                Register
+                            </a>
+                        </div>
+                    {% endif %}
                 </div>
             </div>
         </nav>
@@ -149,7 +182,7 @@
                     </div>
                 </div>
                 <div class="flex items-center space-x-6 text-xs text-slate-500 font-medium">
-                    <a href="#" class="hover:text-sky-600 transition-colors">Browse Notes</a>
+                    <a href="{% url 'notes:home' %}" class="hover:text-sky-600 transition-colors">Browse Notes</a>
                     <a href="#" class="hover:text-sky-600 transition-colors">Upload Guide</a>
                     <a href="#" class="hover:text-sky-600 transition-colors">Academic Honor Code</a>
                     <a href="#" class="hover:text-sky-600 transition-colors">Privacy</a>
