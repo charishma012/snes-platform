@@ -1,11 +1,14 @@
+import io
 from django.contrib.admin.sites import site
 from django.contrib.auth.models import User
 from django.contrib.messages.storage.fallback import FallbackStorage
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import Client, RequestFactory, TestCase
 from django.urls import reverse
+from pypdf import PdfWriter
 
 from .admin import NoteAdmin, reset_report_count
+from .forms import NoteEditForm, NoteUploadForm
 from .models import Note
 
 # Minimal valid 1-page PDF
@@ -318,3 +321,418 @@ class AdminModerationTests(TestCase):
 
         self.note1.refresh_from_db()
         self.assertEqual(self.note1.report_count, 0)
+
+
+def create_test_pdf(num_pages=1) -> bytes:
+    writer = PdfWriter()
+    for _ in range(num_pages):
+        writer.add_blank_page(width=100, height=100)
+    buf = io.BytesIO()
+    writer.write(buf)
+    return buf.getvalue()
+
+
+class NoteFormValidationTests(TestCase):
+    def setUp(self):
+        self.user = User.objects.create_user(
+            username="author1", password="SecurePassword123!"
+        )
+
+    def test_upload_valid_pdf_form(self):
+        """Valid PDF form cleaning extracts page count and sets file_type = 'PDF'."""
+        pdf_bytes = create_test_pdf(num_pages=3)
+        file_obj = SimpleUploadedFile(
+            "calculus_notes.pdf", pdf_bytes, content_type="application/pdf"
+        )
+        form = NoteUploadForm(
+            data={
+                "title": "Calculus III Multivariable",
+                "subject": "Mathematics",
+                "topic": "Vector Fields",
+                "category": Note.Category.NOTES,
+                "year": 2024,
+                "description": "Comprehensive notes covering Green's theorem.",
+            },
+            files={"file": file_obj},
+        )
+        self.assertTrue(form.is_valid(), form.errors)
+        self.assertEqual(form.cleaned_file_type, "PDF")
+        self.assertEqual(form.cleaned_page_count, 3)
+
+    def test_upload_valid_pptx_form(self):
+        """Valid PPTX form cleaning sets file_type = 'PPTX' and page_count = None."""
+        pptx_file = SimpleUploadedFile(
+            "algorithm_slides.pptx",
+            b"PK\x03\x04fake pptx binary",
+            content_type="application/vnd.openxmlformats-officedocument.presentationml.presentation",
+        )
+        form = NoteUploadForm(
+            data={
+                "title": "Sorting Algorithms Slides",
+                "subject": "Computer Science",
+                "topic": "QuickSort & MergeSort",
+                "category": Note.Category.NOTES,
+                "year": 2025,
+            },
+            files={"file": pptx_file},
+        )
+        self.assertTrue(form.is_valid(), form.errors)
+        self.assertEqual(form.cleaned_file_type, "PPTX")
+        self.assertIsNone(form.cleaned_page_count)
+
+    def test_upload_corrupt_pdf_rejected(self):
+        """Corrupt or unreadable PDF is rejected with user-friendly error message."""
+        bad_file = SimpleUploadedFile(
+            "broken_doc.pdf",
+            b"This is not a real PDF file contents",
+            content_type="application/pdf",
+        )
+        form = NoteUploadForm(
+            data={
+                "title": "Broken PDF Note",
+                "subject": "Physics",
+                "topic": "Mechanics",
+                "category": Note.Category.NOTES,
+                "year": 2024,
+            },
+            files={"file": bad_file},
+        )
+        self.assertFalse(form.is_valid())
+        self.assertIn("file", form.errors)
+        self.assertIn("corrupt or could not be read", form.errors["file"][0])
+
+    def test_upload_unsupported_extension_rejected(self):
+        """Uploading files with unsupported extensions (e.g. .docx, .txt) is rejected."""
+        doc_file = SimpleUploadedFile(
+            "essay.docx",
+            b"Word document content",
+            content_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        )
+        form = NoteUploadForm(
+            data={
+                "title": "Essay Draft",
+                "subject": "Literature",
+                "topic": "Modernism",
+                "category": Note.Category.NOTES,
+                "year": 2024,
+            },
+            files={"file": doc_file},
+        )
+        self.assertFalse(form.is_valid())
+        self.assertIn("file", form.errors)
+        self.assertIn("Only PDF (.pdf) and PowerPoint (.pptx)", form.errors["file"][0])
+
+    def test_upload_file_size_exceeded_rejected(self):
+        """Files exceeding 25 MB are rejected by validation."""
+        fake_large_file = SimpleUploadedFile(
+            "huge_file.pdf",
+            b"x" * 10,  # small dummy content
+            content_type="application/pdf",
+        )
+        # artificially set size attribute above 25 MB (26 MB)
+        fake_large_file.size = 26 * 1024 * 1024
+        form = NoteUploadForm(
+            data={
+                "title": "Huge Notes",
+                "subject": "Biology",
+                "topic": "Genetics",
+                "category": Note.Category.NOTES,
+                "year": 2024,
+            },
+            files={"file": fake_large_file},
+        )
+        self.assertFalse(form.is_valid())
+        self.assertIn("file", form.errors)
+        self.assertIn("exceeds the 25 MB limit", form.errors["file"][0])
+
+    def test_note_edit_form_valid(self):
+        """NoteEditForm updates metadata without requiring a file."""
+        note = Note.objects.create(
+            title="Original Title",
+            subject="History",
+            topic="WWII",
+            category=Note.Category.NOTES,
+            year=2023,
+            uploader=self.user,
+        )
+        edit_form = NoteEditForm(
+            instance=note,
+            data={
+                "title": "Updated Title",
+                "subject": "World History",
+                "topic": "Pacific Theater",
+                "category": Note.Category.CHEAT_SHEET,
+                "year": 2024,
+                "description": "Updated detailed notes.",
+            },
+        )
+        self.assertTrue(edit_form.is_valid(), edit_form.errors)
+        saved = edit_form.save()
+        self.assertEqual(saved.title, "Updated Title")
+        self.assertEqual(saved.subject, "World History")
+        self.assertEqual(saved.category, Note.Category.CHEAT_SHEET)
+
+
+class NoteViewsAndPermissionsTests(TestCase):
+    def setUp(self):
+        self.client = Client()
+        self.uploader = User.objects.create_user(
+            username="prof_uploader", password="SecurePassword123!"
+        )
+        self.other_user = User.objects.create_user(
+            username="other_student", password="SecurePassword123!"
+        )
+
+        pdf_bytes = create_test_pdf(num_pages=4)
+        pdf_file = SimpleUploadedFile(
+            "sample_calculus.pdf", pdf_bytes, content_type="application/pdf"
+        )
+        self.pdf_note = Note.objects.create(
+            title="Multivariable Calculus Guide",
+            description="Complete semester formulas and exam prep.",
+            file=pdf_file,
+            subject="Mathematics",
+            topic="Calculus III",
+            category=Note.Category.CHEAT_SHEET,
+            year=2024,
+            uploader=self.uploader,
+            page_count=4,
+            file_type="PDF",
+        )
+
+        pptx_file = SimpleUploadedFile(
+            "intro_os_slides.pptx",
+            b"fake pptx presentation bytes",
+            content_type="application/vnd.openxmlformats-officedocument.presentationml.presentation",
+        )
+        self.pptx_note = Note.objects.create(
+            title="OS Scheduling Slides",
+            description="Lecture slides covering round-robin and priority scheduling.",
+            file=pptx_file,
+            subject="Computer Science",
+            topic="Operating Systems",
+            category=Note.Category.NOTES,
+            year=2025,
+            uploader=self.uploader,
+            file_type="PPTX",
+        )
+
+    def test_upload_view_requires_login(self):
+        """Anonymous user is redirected to login when accessing upload."""
+        response = self.client.get(reverse("notes:upload_note"))
+        self.assertEqual(response.status_code, 302)
+        self.assertIn(reverse("notes:login"), response.url)
+
+    def test_upload_view_get(self):
+        """Authenticated user can view upload form."""
+        self.client.login(username="prof_uploader", password="SecurePassword123!")
+        response = self.client.get(reverse("notes:upload_note"))
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, "notes/upload_note.html")
+        self.assertContains(response, "Upload Study Material")
+
+    def test_upload_view_post_pdf_success(self):
+        """Authenticated user uploads valid PDF, page count is saved, redirected to detail."""
+        self.client.login(username="prof_uploader", password="SecurePassword123!")
+        pdf_bytes = create_test_pdf(num_pages=5)
+        pdf_file = SimpleUploadedFile(
+            "chemistry_notes.pdf", pdf_bytes, content_type="application/pdf"
+        )
+        response = self.client.post(
+            reverse("notes:upload_note"),
+            {
+                "title": "Organic Reactions Summary",
+                "subject": "Chemistry",
+                "topic": "Stereochemistry",
+                "category": Note.Category.NOTES,
+                "year": 2026,
+                "description": "Comprehensive reactions cheatsheet.",
+                "file": pdf_file,
+            },
+        )
+        new_note = Note.objects.get(title="Organic Reactions Summary")
+        self.assertRedirects(response, reverse("notes:note_detail", kwargs={"pk": new_note.pk}))
+        self.assertEqual(new_note.uploader, self.uploader)
+        self.assertEqual(new_note.file_type, "PDF")
+        self.assertEqual(new_note.page_count, 5)
+
+    def test_upload_view_post_pptx_success(self):
+        """Authenticated user uploads PPTX, file_type='PPTX', page_count=None."""
+        self.client.login(username="prof_uploader", password="SecurePassword123!")
+        pptx_file = SimpleUploadedFile(
+            "db_slides.pptx",
+            b"fake pptx content",
+            content_type="application/vnd.openxmlformats-officedocument.presentationml.presentation",
+        )
+        response = self.client.post(
+            reverse("notes:upload_note"),
+            {
+                "title": "Database Normalization Slides",
+                "subject": "Computer Science",
+                "topic": "SQL & Normalization",
+                "category": Note.Category.NOTES,
+                "year": 2026,
+                "file": pptx_file,
+            },
+        )
+        new_note = Note.objects.get(title="Database Normalization Slides")
+        self.assertRedirects(response, reverse("notes:note_detail", kwargs={"pk": new_note.pk}))
+        self.assertEqual(new_note.file_type, "PPTX")
+        self.assertIsNone(new_note.page_count)
+
+    def test_note_detail_view_anonymous_access(self):
+        """Detail view is publicly accessible and displays full metadata."""
+        response = self.client.get(
+            reverse("notes:note_detail", kwargs={"pk": self.pdf_note.pk})
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, "notes/note_detail.html")
+        self.assertContains(response, self.pdf_note.title)
+        self.assertContains(response, self.pdf_note.subject)
+        self.assertContains(response, self.pdf_note.topic)
+        self.assertContains(response, "Cheat Sheet / Summary")
+        self.assertContains(response, "4 pages")
+        self.assertContains(response, "<iframe", html=False)
+
+    def test_note_detail_pptx_preview_and_local_notice(self):
+        """PPTX note detail renders Office Online iframe and local dev notice."""
+        response = self.client.get(
+            reverse("notes:note_detail", kwargs={"pk": self.pptx_note.pk})
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "view.officeapps.live.com")
+        self.assertContains(response, "Local Development Notice")
+        self.assertContains(response, "Render")
+
+    def test_note_detail_owner_actions_visibility(self):
+        """Edit and Delete buttons appear ONLY for note uploader."""
+        # Anonymous visitor sees neither
+        anon_resp = self.client.get(
+            reverse("notes:note_detail", kwargs={"pk": self.pdf_note.pk})
+        )
+        self.assertNotContains(anon_resp, reverse("notes:edit_note", kwargs={"pk": self.pdf_note.pk}))
+        self.assertNotContains(anon_resp, reverse("notes:delete_note", kwargs={"pk": self.pdf_note.pk}))
+
+        # Other logged-in student sees neither
+        self.client.login(username="other_student", password="SecurePassword123!")
+        other_resp = self.client.get(
+            reverse("notes:note_detail", kwargs={"pk": self.pdf_note.pk})
+        )
+        self.assertNotContains(other_resp, reverse("notes:edit_note", kwargs={"pk": self.pdf_note.pk}))
+        self.assertNotContains(other_resp, reverse("notes:delete_note", kwargs={"pk": self.pdf_note.pk}))
+
+        # Uploader sees both Edit and Delete
+        self.client.login(username="prof_uploader", password="SecurePassword123!")
+        owner_resp = self.client.get(
+            reverse("notes:note_detail", kwargs={"pk": self.pdf_note.pk})
+        )
+        self.assertContains(owner_resp, reverse("notes:edit_note", kwargs={"pk": self.pdf_note.pk}))
+        self.assertContains(owner_resp, reverse("notes:delete_note", kwargs={"pk": self.pdf_note.pk}))
+
+    def test_edit_note_view_permission_enforcement(self):
+        """Non-uploader receives 403 Forbidden when attempting to edit note."""
+        self.client.login(username="other_student", password="SecurePassword123!")
+        # GET attempt
+        resp_get = self.client.get(
+            reverse("notes:edit_note", kwargs={"pk": self.pdf_note.pk})
+        )
+        self.assertEqual(resp_get.status_code, 403)
+        # POST attempt
+        resp_post = self.client.post(
+            reverse("notes:edit_note", kwargs={"pk": self.pdf_note.pk}),
+            {"title": "Hacked Title", "subject": "Math", "topic": "Diff", "category": "NOTES", "year": 2024},
+        )
+        self.assertEqual(resp_post.status_code, 403)
+
+    def test_edit_note_view_owner_success(self):
+        """Note owner can successfully update note metadata."""
+        self.client.login(username="prof_uploader", password="SecurePassword123!")
+        response = self.client.post(
+            reverse("notes:edit_note", kwargs={"pk": self.pdf_note.pk}),
+            {
+                "title": "Calculus III Advanced Cheatsheet",
+                "subject": "Mathematics",
+                "topic": "Stokes & Gauss Theorems",
+                "category": Note.Category.CHEAT_SHEET,
+                "year": 2025,
+                "description": "Updated exam review.",
+            },
+        )
+        self.assertRedirects(response, reverse("notes:note_detail", kwargs={"pk": self.pdf_note.pk}))
+        self.pdf_note.refresh_from_db()
+        self.assertEqual(self.pdf_note.title, "Calculus III Advanced Cheatsheet")
+        self.assertEqual(self.pdf_note.topic, "Stokes & Gauss Theorems")
+
+    def test_delete_note_view_permission_enforcement(self):
+        """Non-uploader receives 403 Forbidden when attempting to delete note."""
+        self.client.login(username="other_student", password="SecurePassword123!")
+        response = self.client.post(
+            reverse("notes:delete_note", kwargs={"pk": self.pdf_note.pk})
+        )
+        self.assertEqual(response.status_code, 403)
+        self.assertTrue(Note.objects.filter(pk=self.pdf_note.pk).exists())
+
+    def test_delete_note_view_requires_post(self):
+        """GET request to delete_note endpoint returns 405 Method Not Allowed."""
+        self.client.login(username="prof_uploader", password="SecurePassword123!")
+        response = self.client.get(
+            reverse("notes:delete_note", kwargs={"pk": self.pdf_note.pk})
+        )
+        self.assertEqual(response.status_code, 405)
+
+    def test_delete_note_view_owner_success(self):
+        """Note owner can delete note and its file via POST, redirects to dashboard."""
+        self.client.login(username="prof_uploader", password="SecurePassword123!")
+        pk = self.pdf_note.pk
+        response = self.client.post(
+            reverse("notes:delete_note", kwargs={"pk": pk})
+        )
+        self.assertRedirects(response, reverse("notes:my_dashboard"))
+        self.assertFalse(Note.objects.filter(pk=pk).exists())
+
+    def test_dashboard_view_displays_uploads_and_study_list(self):
+        """Dashboard displays My Uploads and My Study List for authenticated user."""
+        self.client.login(username="prof_uploader", password="SecurePassword123!")
+        self.pdf_note.bookmarked_by.add(self.uploader)
+
+        response = self.client.get(reverse("notes:my_dashboard"))
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, "notes/dashboard.html")
+        self.assertContains(response, "My Uploads")
+        self.assertContains(response, "My Study List")
+        self.assertContains(response, self.pdf_note.title)
+        self.assertContains(response, self.pptx_note.title)
+
+    def test_controlled_download_increments_count_and_serves_file(self):
+        """Download endpoint increments download count atomically and returns attachment."""
+        initial_downloads = self.pdf_note.downloads
+        response = self.client.get(
+            reverse("notes:download_note", kwargs={"pk": self.pdf_note.pk})
+        )
+        self.assertEqual(response.status_code, 200)
+        self.pdf_note.refresh_from_db()
+        self.assertEqual(self.pdf_note.downloads, initial_downloads + 1)
+        self.assertIn("attachment;", response.headers.get("Content-Disposition", ""))
+
+    def test_report_note_endpoint(self):
+        """Authenticated user can report note via POST, increments report_count atomically."""
+        self.client.login(username="other_student", password="SecurePassword123!")
+        initial_reports = self.pdf_note.report_count
+
+        response = self.client.post(
+            reverse("notes:report_note", kwargs={"pk": self.pdf_note.pk})
+        )
+        self.assertRedirects(
+            response, reverse("notes:note_detail", kwargs={"pk": self.pdf_note.pk})
+        )
+        self.pdf_note.refresh_from_db()
+        self.assertEqual(self.pdf_note.report_count, initial_reports + 1)
+
+    def test_report_note_get_method_not_allowed(self):
+        """GET request to report_note returns 405 Method Not Allowed."""
+        self.client.login(username="other_student", password="SecurePassword123!")
+        response = self.client.get(
+            reverse("notes:report_note", kwargs={"pk": self.pdf_note.pk})
+        )
+        self.assertEqual(response.status_code, 405)
+

@@ -55,10 +55,10 @@
                         Browse Notes
                     </a>
                     {% if user.is_authenticated %}
-                        <a href="#" class="px-3 py-2 text-sm font-medium text-slate-600 hover:text-sky-600 hover:bg-sky-50 rounded-lg transition-colors">
+                        <a href="{% url 'notes:upload_note' %}" class="px-3 py-2 text-sm font-medium text-slate-600 hover:text-sky-600 hover:bg-sky-50 rounded-lg transition-colors">
                             Upload Note
                         </a>
-                        <a href="#" class="px-3 py-2 text-sm font-medium text-slate-600 hover:text-sky-600 hover:bg-sky-50 rounded-lg transition-colors">
+                        <a href="{% url 'notes:my_dashboard' %}" class="px-3 py-2 text-sm font-medium text-slate-600 hover:text-sky-600 hover:bg-sky-50 rounded-lg transition-colors">
                             My Study List
                         </a>
                     {% endif %}
@@ -107,10 +107,10 @@
                         Browse Notes
                     </a>
                     {% if user.is_authenticated %}
-                        <a href="#" class="px-3 py-2 text-base font-medium text-slate-600 hover:text-sky-600 hover:bg-sky-50 rounded-lg">
+                        <a href="{% url 'notes:upload_note' %}" class="px-3 py-2 text-base font-medium text-slate-600 hover:text-sky-600 hover:bg-sky-50 rounded-lg">
                             Upload Note
                         </a>
-                        <a href="#" class="px-3 py-2 text-base font-medium text-slate-600 hover:text-sky-600 hover:bg-sky-50 rounded-lg">
+                        <a href="{% url 'notes:my_dashboard' %}" class="px-3 py-2 text-base font-medium text-slate-600 hover:text-sky-600 hover:bg-sky-50 rounded-lg">
                             My Study List
                         </a>
                         <div class="pt-2 border-t border-slate-100 flex flex-col space-y-2">

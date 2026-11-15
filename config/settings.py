@@ -125,6 +125,9 @@ MEDIA_ROOT = BASE_DIR / 'media'
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
+# Frame options for in-browser PDF preview iframe
+X_FRAME_OPTIONS = 'SAMEORIGIN'
+
 # Authentication redirects
 LOGIN_URL = 'notes:login'
 LOGIN_REDIRECT_URL = '/'

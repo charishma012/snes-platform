@@ -1,0 +1,262 @@
+{% extends "base.html" %}
+
+{% block title %}My Academic Dashboard | SNES - Smart Notes Exchange System{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8 space-y-6">
+
+    <!-- Dashboard Top Banner -->
+    <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4 bg-white p-6 sm:p-8 rounded-2xl shadow-sm border border-slate-200">
+        <div class="space-y-1">
+            <h1 class="text-2xl font-extrabold text-slate-900 tracking-tight flex items-center space-x-2">
+                <span>Welcome, {{ user.username }}!</span>
+            </h1>
+            <p class="text-xs sm:text-sm text-slate-500">
+                Manage your uploaded academic resources and track your bookmarked study materials.
+            </p>
+        </div>
+        <div class="flex items-center space-x-3">
+            <a href="{% url 'notes:upload_note' %}" class="inline-flex items-center space-x-2 px-4 py-2.5 rounded-xl bg-sky-600 hover:bg-sky-700 text-white text-xs sm:text-sm font-semibold shadow-sm hover:shadow transition">
+                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                </svg>
+                <span>Upload New Note</span>
+            </a>
+        </div>
+    </div>
+
+    <!-- Tabbed Navigation -->
+    <div class="border-b border-slate-200">
+        <nav class="flex space-x-8" aria-label="Tabs">
+            <button type="button" id="tab-uploads-btn" onclick="switchDashboardTab('uploads')" class="tab-button border-b-2 border-sky-600 py-4 px-1 text-sm font-semibold text-sky-600 flex items-center space-x-2">
+                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                </svg>
+                <span>My Uploads</span>
+                <span class="ml-2 py-0.5 px-2 rounded-full text-xs font-bold bg-sky-100 text-sky-700">{{ user_uploads.count }}</span>
+            </button>
+
+            <button type="button" id="tab-study-btn" onclick="switchDashboardTab('study')" class="tab-button border-b-2 border-transparent py-4 px-1 text-sm font-semibold text-slate-500 hover:text-slate-700 hover:border-slate-300 flex items-center space-x-2">
+                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
+                </svg>
+                <span>My Study List</span>
+                <span class="ml-2 py-0.5 px-2 rounded-full text-xs font-bold bg-slate-100 text-slate-600">{{ bookmarked_notes.count }}</span>
+            </button>
+        </nav>
+    </div>
+
+    <!-- Section 1: My Uploads -->
+    <div id="section-uploads" class="space-y-4">
+        {% if user_uploads %}
+            <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+                <div class="overflow-x-auto">
+                    <table class="min-w-full divide-y divide-slate-200 text-left text-sm">
+                        <thead class="bg-slate-50 text-xs uppercase tracking-wider font-semibold text-slate-500">
+                            <tr>
+                                <th scope="col" class="px-6 py-3.5">Title & Subject</th>
+                                <th scope="col" class="px-6 py-3.5">Category & Year</th>
+                                <th scope="col" class="px-6 py-3.5">Format</th>
+                                <th scope="col" class="px-6 py-3.5">Uploaded</th>
+                                <th scope="col" class="px-6 py-3.5">Downloads</th>
+                                <th scope="col" class="px-6 py-3.5">Score</th>
+                                <th scope="col" class="px-6 py-3.5 text-right">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-100 bg-white">
+                            {% for note in user_uploads %}
+                                <tr class="hover:bg-slate-50/70 transition">
+                                    <td class="px-6 py-4">
+                                        <div class="font-bold text-slate-900">
+                                            <a href="{% url 'notes:note_detail' note.pk %}" class="hover:text-sky-600 transition">
+                                                {{ note.title }}
+                                            </a>
+                                        </div>
+                                        <div class="text-xs text-slate-500 mt-0.5">
+                                            {{ note.subject }} &bull; <span class="text-slate-400">{{ note.topic }}</span>
+                                        </div>
+                                    </td>
+                                    <td class="px-6 py-4">
+                                        <div class="flex flex-col gap-1 items-start">
+                                            <span class="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-bold tracking-wide
+                                                {% if note.category == 'NOTES' %}bg-sky-50 text-sky-700
+                                                {% elif note.category == 'CHEAT_SHEET' %}bg-emerald-50 text-emerald-700
+                                                {% elif note.category == 'PYQ' %}bg-amber-50 text-amber-700
+                                                {% else %}bg-purple-50 text-purple-700{% endif %}">
+                                                {{ note.get_category_display }}
+                                            </span>
+                                            <span class="text-[11px] text-slate-400">
+                                                {% if note.year == 0 %}General{% else %}Year {{ note.year }}{% endif %}
+                                            </span>
+                                        </div>
+                                    </td>
+                                    <td class="px-6 py-4">
+                                        <span class="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-semibold bg-slate-100 text-slate-700">
+                                            {% if note.file_type == 'PDF' %}
+                                                {% if note.page_count %}{{ note.page_count }}p &bull; {% endif %}PDF
+                                            {% else %}
+                                                PPTX
+                                            {% endif %}
+                                        </span>
+                                    </td>
+                                    <td class="px-6 py-4 text-xs text-slate-500 whitespace-nowrap">
+                                        {{ note.created_at|date:"M d, Y" }}
+                                    </td>
+                                    <td class="px-6 py-4 text-xs font-semibold text-slate-700 whitespace-nowrap">
+                                        {{ note.downloads }}
+                                    </td>
+                                    <td class="px-6 py-4 text-xs font-semibold text-slate-700 whitespace-nowrap">
+                                        {{ note.vote_score }}
+                                    </td>
+                                    <td class="px-6 py-4 text-right whitespace-nowrap">
+                                        <div class="inline-flex items-center space-x-2">
+                                            <a href="{% url 'notes:note_detail' note.pk %}" title="View Note" class="p-1.5 text-slate-500 hover:text-sky-600 rounded-lg hover:bg-sky-50 transition">
+                                                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                                </svg>
+                                            </a>
+                                            <a href="{% url 'notes:edit_note' note.pk %}" title="Edit Note" class="p-1.5 text-slate-500 hover:text-indigo-600 rounded-lg hover:bg-indigo-50 transition">
+                                                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                                </svg>
+                                            </a>
+                                            <form method="POST" action="{% url 'notes:delete_note' note.pk %}" class="inline" onsubmit="return confirm('Permanently delete this note and its file?');">
+                                                {% csrf_token %}
+                                                <button type="submit" title="Delete Note" class="p-1.5 text-slate-500 hover:text-rose-600 rounded-lg hover:bg-rose-50 transition">
+                                                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                                    </svg>
+                                                </button>
+                                            </form>
+                                        </div>
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        {% else %}
+            <!-- Empty State for Uploads -->
+            <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-12 text-center space-y-4">
+                <div class="w-12 h-12 rounded-2xl bg-sky-50 text-sky-600 mx-auto flex items-center justify-center">
+                    <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                    </svg>
+                </div>
+                <div class="space-y-1">
+                    <h3 class="text-base font-bold text-slate-900">No notes uploaded yet</h3>
+                    <p class="text-sm text-slate-500 max-w-sm mx-auto">
+                        Share your lecture notes, formula sheets, or exam papers with fellow students across courses.
+                    </p>
+                </div>
+                <div>
+                    <a href="{% url 'notes:upload_note' %}" class="inline-flex items-center space-x-2 px-4 py-2 rounded-xl bg-sky-600 hover:bg-sky-700 text-white text-xs sm:text-sm font-semibold transition">
+                        <span>Upload Your First Note</span>
+                    </a>
+                </div>
+            </div>
+        {% endif %}
+    </div>
+
+    <!-- Section 2: My Study List -->
+    <div id="section-study" class="space-y-4 hidden">
+        {% if bookmarked_notes %}
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+                {% for note in bookmarked_notes %}
+                    <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-5 space-y-4 flex flex-col justify-between hover:shadow-md transition">
+                        <div class="space-y-2">
+                            <div class="flex items-center justify-between gap-2">
+                                <span class="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-bold tracking-wide
+                                    {% if note.category == 'NOTES' %}bg-sky-50 text-sky-700
+                                    {% elif note.category == 'CHEAT_SHEET' %}bg-emerald-50 text-emerald-700
+                                    {% elif note.category == 'PYQ' %}bg-amber-50 text-amber-700
+                                    {% else %}bg-purple-50 text-purple-700{% endif %}">
+                                    {{ note.get_category_display }}
+                                </span>
+                                <span class="text-xs text-slate-400 font-medium">
+                                    {% if note.file_type == 'PDF' %}{{ note.page_count|default:"-" }}p &bull; PDF{% else %}PPTX{% endif %}
+                                </span>
+                            </div>
+
+                            <h3 class="text-base font-bold text-slate-900 line-clamp-2">
+                                <a href="{% url 'notes:note_detail' note.pk %}" class="hover:text-sky-600 transition">
+                                    {{ note.title }}
+                                </a>
+                            </h3>
+
+                            <p class="text-xs text-slate-500">
+                                <strong>{{ note.subject }}</strong> &bull; {{ note.topic }}
+                            </p>
+
+                            {% if note.description %}
+                                <p class="text-xs text-slate-600 line-clamp-2 leading-relaxed">
+                                    {{ note.description }}
+                                </p>
+                            {% endif %}
+                        </div>
+
+                        <div class="pt-3 border-t border-slate-100 flex items-center justify-between text-xs">
+                            <span class="text-slate-400">By {{ note.uploader.username }}</span>
+                            <div class="flex items-center space-x-2">
+                                <a href="{% url 'notes:download_note' note.pk %}" class="px-3 py-1.5 rounded-lg bg-sky-50 text-sky-700 font-semibold hover:bg-sky-100 transition">
+                                    Download
+                                </a>
+                                <a href="{% url 'notes:note_detail' note.pk %}" class="px-3 py-1.5 rounded-lg border border-slate-200 text-slate-600 font-medium hover:bg-slate-50 transition">
+                                    View
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+        {% else %}
+            <!-- Empty State for Study List -->
+            <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-12 text-center space-y-4">
+                <div class="w-12 h-12 rounded-2xl bg-indigo-50 text-indigo-600 mx-auto flex items-center justify-center">
+                    <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
+                    </svg>
+                </div>
+                <div class="space-y-1">
+                    <h3 class="text-base font-bold text-slate-900">Your study list is empty</h3>
+                    <p class="text-sm text-slate-500 max-w-sm mx-auto">
+                        Bookmark notes while exploring course materials to access them quickly here anytime you study.
+                    </p>
+                </div>
+                <div>
+                    <a href="{% url 'notes:home' %}" class="inline-flex items-center space-x-2 px-4 py-2 rounded-xl bg-sky-600 hover:bg-sky-700 text-white text-xs sm:text-sm font-semibold transition">
+                        <span>Browse Available Notes</span>
+                    </a>
+                </div>
+            </div>
+        {% endif %}
+    </div>
+
+</div>
+
+<!-- Vanilla JS Tab Switching -->
+<script>
+    function switchDashboardTab(tab) {
+        const uploadsBtn = document.getElementById('tab-uploads-btn');
+        const studyBtn = document.getElementById('tab-study-btn');
+        const uploadsSection = document.getElementById('section-uploads');
+        const studySection = document.getElementById('section-study');
+
+        if (tab === 'uploads') {
+            uploadsSection.classList.remove('hidden');
+            studySection.classList.add('hidden');
+
+            uploadsBtn.className = 'tab-button border-b-2 border-sky-600 py-4 px-1 text-sm font-semibold text-sky-600 flex items-center space-x-2';
+            studyBtn.className = 'tab-button border-b-2 border-transparent py-4 px-1 text-sm font-semibold text-slate-500 hover:text-slate-700 hover:border-slate-300 flex items-center space-x-2';
+        } else {
+            uploadsSection.classList.add('hidden');
+            studySection.classList.remove('hidden');
+
+            studyBtn.className = 'tab-button border-b-2 border-sky-600 py-4 px-1 text-sm font-semibold text-sky-600 flex items-center space-x-2';
+            uploadsBtn.className = 'tab-button border-b-2 border-transparent py-4 px-1 text-sm font-semibold text-slate-500 hover:text-slate-700 hover:border-slate-300 flex items-center space-x-2';
+        }
+    }
+</script>
+{% endblock %}

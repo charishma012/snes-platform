@@ -1,0 +1,158 @@
+{% extends "base.html" %}
+
+{% block title %}Edit {{ note.title }} | SNES - Smart Notes Exchange System{% endblock %}
+
+{% block content %}
+<div class="max-w-3xl mx-auto py-10 px-4 sm:px-6 lg:px-8">
+    <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+        <!-- Header Banner -->
+        <div class="bg-gradient-to-r from-sky-600 to-indigo-700 px-6 sm:px-8 py-7 text-white">
+            <div class="flex items-center space-x-3">
+                <div class="w-10 h-10 rounded-xl bg-white/10 backdrop-blur flex items-center justify-center">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                    </svg>
+                </div>
+                <div>
+                    <h1 class="text-xl sm:text-2xl font-bold">Edit Note Metadata</h1>
+                    <p class="text-xs sm:text-sm text-sky-100 mt-0.5">Update title, subject, category, or description for your uploaded material</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Note about document file -->
+        <div class="bg-slate-50 border-b border-slate-200 px-6 sm:px-8 py-3.5 flex items-center justify-between text-xs text-slate-600">
+            <div class="flex items-center space-x-2">
+                <span class="px-2 py-0.5 rounded font-bold uppercase tracking-wider bg-white border border-slate-200 text-slate-700">
+                    {{ note.file_extension }}
+                </span>
+                <span class="font-medium text-slate-700 truncate max-w-xs sm:max-w-md">Attached file: {{ note.file.name }}</span>
+            </div>
+            <span class="text-slate-400 italic">File cannot be replaced here.</span>
+        </div>
+
+        <!-- Form Body -->
+        <form method="POST" action="{% url 'notes:edit_note' note.pk %}" class="p-6 sm:p-8 space-y-6" novalidate>
+            {% csrf_token %}
+
+            {% if form.non_field_errors %}
+                <div class="p-4 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-sm space-y-1">
+                    {% for error in form.non_field_errors %}
+                        <p class="flex items-center space-x-1.5">
+                            <svg class="w-4 h-4 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/>
+                            </svg>
+                            <span>{{ error }}</span>
+                        </p>
+                    {% endfor %}
+                </div>
+            {% endif %}
+
+            <!-- Title -->
+            <div class="space-y-1.5">
+                <label for="{{ form.title.id_for_label }}" class="block text-xs font-semibold uppercase tracking-wider text-slate-700">
+                    Document Title <span class="text-rose-500">*</span>
+                </label>
+                {{ form.title }}
+                {% if form.title.errors %}
+                    <div class="space-y-0.5 mt-1">
+                        {% for error in form.title.errors %}
+                            <p class="text-xs text-rose-600">{{ error }}</p>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+            </div>
+
+            <!-- Subject & Topic Grid -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div class="space-y-1.5">
+                    <label for="{{ form.subject.id_for_label }}" class="block text-xs font-semibold uppercase tracking-wider text-slate-700">
+                        Subject / Course <span class="text-rose-500">*</span>
+                    </label>
+                    {{ form.subject }}
+                    {% if form.subject.errors %}
+                        <div class="space-y-0.5 mt-1">
+                            {% for error in form.subject.errors %}
+                                <p class="text-xs text-rose-600">{{ error }}</p>
+                            {% endfor %}
+                        </div>
+                    {% endif %}
+                </div>
+
+                <div class="space-y-1.5">
+                    <label for="{{ form.topic.id_for_label }}" class="block text-xs font-semibold uppercase tracking-wider text-slate-700">
+                        Topic / Module <span class="text-rose-500">*</span>
+                    </label>
+                    {{ form.topic }}
+                    {% if form.topic.errors %}
+                        <div class="space-y-0.5 mt-1">
+                            {% for error in form.topic.errors %}
+                                <p class="text-xs text-rose-600">{{ error }}</p>
+                            {% endfor %}
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Category & Academic Year Grid -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div class="space-y-1.5">
+                    <label for="{{ form.category.id_for_label }}" class="block text-xs font-semibold uppercase tracking-wider text-slate-700">
+                        Category <span class="text-rose-500">*</span>
+                    </label>
+                    {{ form.category }}
+                    {% if form.category.errors %}
+                        <div class="space-y-0.5 mt-1">
+                            {% for error in form.category.errors %}
+                                <p class="text-xs text-rose-600">{{ error }}</p>
+                            {% endfor %}
+                        </div>
+                    {% endif %}
+                </div>
+
+                <div class="space-y-1.5">
+                    <label for="{{ form.year.id_for_label }}" class="block text-xs font-semibold uppercase tracking-wider text-slate-700">
+                        Academic Year <span class="text-rose-500">*</span>
+                    </label>
+                    {{ form.year }}
+                    {% if form.year.errors %}
+                        <div class="space-y-0.5 mt-1">
+                            {% for error in form.year.errors %}
+                                <p class="text-xs text-rose-600">{{ error }}</p>
+                            {% endfor %}
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Description -->
+            <div class="space-y-1.5">
+                <label for="{{ form.description.id_for_label }}" class="block text-xs font-semibold uppercase tracking-wider text-slate-700">
+                    Description / Notes Overview <span class="text-slate-400 font-normal lowercase">(optional)</span>
+                </label>
+                {{ form.description }}
+                {% if form.description.errors %}
+                    <div class="space-y-0.5 mt-1">
+                        {% for error in form.description.errors %}
+                            <p class="text-xs text-rose-600">{{ error }}</p>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+            </div>
+
+            <!-- Submit and Actions -->
+            <div class="pt-4 border-t border-slate-100 flex items-center justify-end space-x-3">
+                <a href="{% url 'notes:note_detail' note.pk %}" class="px-5 py-2.5 rounded-xl border border-slate-300 text-sm font-semibold text-slate-700 hover:bg-slate-50 transition">
+                    Cancel
+                </a>
+                <button type="submit" class="px-6 py-2.5 rounded-xl bg-sky-600 hover:bg-sky-700 text-white text-sm font-semibold shadow-md hover:shadow transition flex items-center space-x-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                    </svg>
+                    <span>Save Changes</span>
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
