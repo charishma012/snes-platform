@@ -1,17 +1,17 @@
 # Smart Notes Exchange System (SNES)
 
-A zero-cost, production-grade academic study materials and lecture notes exchange platform built with Django 5.2, HTMX, Tailwind CSS, WhiteNoise, and S3-compatible cloud object storage.
+A production-grade, zero-cost academic study materials and lecture notes exchange platform built with Django 5.2, HTMX, Tailwind CSS, WhiteNoise, and flexible storage (Local Media Root by default, with optional S3-compatible cloud storage via Cloudflare R2 or Supabase).
 
 ---
 
 ## 🌟 Key Features
 
-* **Multi-Format Document Uploads:** Seamlessly upload lecture notes, cheat sheets, past exam papers (PYQs), and assignments in PDF (`.pdf`) and PowerPoint (`.pptx`) formats (up to 25 MB).
+* **Multi-Format Document Uploads:** Upload lecture notes, cheat sheets, past exam papers (PYQs), and assignments in PDF (`.pdf`) and PowerPoint (`.pptx`) formats (up to 25 MB).
 * **Automated Page Counting:** Server-side parsing of uploaded PDFs with `pypdf` to extract and display verified page counts automatically.
 * **In-Browser Document Previews:**
   * Embedded, secure inline PDF previewer with fallback download options.
-  * Cloud-integrated slide viewer (Microsoft Office Online & Google Docs Viewer) for PowerPoint presentations without requiring desktop Office.
-* **Controlled & Tracked Downloads:** Atomic download counter increments with sanitized attachment filenames streaming directly from local storage or cloud S3/R2 storage.
+  * Cloud-integrated slide viewer (Microsoft Office Online & Google Docs Viewer) for PowerPoint presentations.
+* **Controlled & Tracked Downloads:** Atomic download counter increments with sanitized attachment filenames streaming via storage-agnostic `note.file.open("rb")` and `FileResponse`.
 * **HTMX-Powered Dynamic Interactions:**
   * Live upvote/downvote buttons with instant net score calculations and active user state indicators without full page refreshes.
   * 1-click personal study list bookmarking toggle.
@@ -21,7 +21,7 @@ A zero-cost, production-grade academic study materials and lecture notes exchang
   * Multi-field search across title, subject, topic, and description with category and year dropdown filters and pagination.
 * **User Dashboard:** Dedicated hub for managing uploaded materials, viewing personal statistics, and accessing bookmarked study lists.
 * **Academic Review / 1-Click Moderation:** Atomic report submission mechanism flagging compromised or infringing uploads for administrative review.
-* **Production Hardened:** Configured for zero-cost hosting on **Render** (Render Web Service + Render PostgreSQL) with persistent media storage via Cloudflare R2 or Supabase Storage and static asset serving via WhiteNoise.
+* **Zero-Cost Production Hardening:** Configured for seamless deployment on **Render** (Render Web Service + Render PostgreSQL) with WhiteNoise for static assets and local `MEDIA_ROOT` serving by default (no cloud bucket required), plus optional S3/Supabase support.
 
 ---
 
@@ -32,9 +32,9 @@ A zero-cost, production-grade academic study materials and lecture notes exchang
 | **Backend Framework** | Django 5.2 (Python 3.11+) |
 | **Frontend & Styling** | Django Templates, Tailwind CSS (CDN), HTMX (`django-htmx`) |
 | **PDF Processing** | `pypdf` |
-| **Database** | SQLite (Local Development) / PostgreSQL (`psycopg[binary]`, `dj-database-url` in Production) |
+| **Database** | SQLite (Local Dev) / PostgreSQL (`psycopg[binary]`, `dj-database-url` in Production) |
 | **Static Files** | WhiteNoise (`CompressedManifestStaticFilesStorage`) |
-| **Media & Object Storage** | `django-storages` + `boto3` (AWS S3, Cloudflare R2, or Supabase Storage) |
+| **Media Storage** | Local `MEDIA_ROOT` (default zero-cost) / `django-storages[s3]` + `boto3` (Optional S3/R2/Supabase) |
 | **WSGI Server** | Gunicorn |
 | **Deployment Target** | Render (Zero-cost Web Service + Managed PostgreSQL) |
 
@@ -100,33 +100,12 @@ python manage.py test
 
 ---
 
-## 🌐 Cloud Storage Setup (Cloudflare R2 / Supabase Storage)
-
-Because free-tier platform hosts like Render have ephemeral filesystems, uploaded media files (`/media/`) must be stored in persistent S3-compatible object storage.
-
-### Option A: Cloudflare R2 (Recommended - 10 GB Free Forever)
-1. Go to the **Cloudflare Dashboard** &rarr; **R2 Object Storage**.
-2. Create a bucket (e.g., `snes-media-bucket`).
-3. Under bucket **Settings** &rarr; **Public Access**, enable **Custom Domain** or **R2.dev subdomain** (e.g., `pub-xxxx.r2.dev`).
-4. Generate an **R2 API Token** with `Object Read & Write` permissions.
-5. Note down:
-   * **Access Key ID**
-   * **Secret Access Key**
-   * **Endpoint URL** (e.g., `https://<account_id>.r2.cloudflarestorage.com`)
-   * **Public Domain** (e.g., `pub-xxxx.r2.dev`)
-
-### Option B: Supabase Storage (1 GB Free)
-1. In your **Supabase Project**, go to **Storage** and create a public bucket named `snes-media-bucket`.
-2. Under **Project Settings** &rarr; **Storage**, copy the S3 Connection details (Access Key, Secret Key, and S3 Endpoint).
-
----
-
 ## 📦 Deploying to Render (Zero-Cost Setup)
 
 ### 1. Create Render PostgreSQL Database
 1. In your [Render Dashboard](https://dashboard.render.com/), click **New +** &rarr; **PostgreSQL**.
-2. Choose a name (e.g., `snes-db`) and select the **Free** instance type.
-3. Once provisioned, copy the **Internal Database URL** (or External URL).
+2. Name your database (e.g., `snes-db`) and select the **Free** instance type.
+3. Once provisioned, copy the **Internal Database URL**.
 
 ### 2. Create Render Web Service
 1. Click **New +** &rarr; **Web Service** and connect your GitHub repository.
@@ -137,40 +116,46 @@ Because free-tier platform hosts like Render have ephemeral filesystems, uploade
 4. Choose the **Free** instance type.
 
 ### 3. Configure Production Environment Variables on Render
-Under the **Environment** tab of your Render Web Service, add:
+Under the **Environment** tab of your Render Web Service, add the following variables:
 
 | Variable | Value / Description |
 |---|---|
-| `DJANGO_SECRET_KEY` | Generate a long random secret key |
+| `DJANGO_SECRET_KEY` | Generate a secure, random secret key (required in production) |
 | `DJANGO_DEBUG` | `False` |
 | `DJANGO_ALLOWED_HOSTS` | `localhost,127.0.0.1,.onrender.com,your-app-name.onrender.com` |
 | `DJANGO_CSRF_TRUSTED_ORIGINS` | `https://*.onrender.com,https://your-app-name.onrender.com` |
 | `DATABASE_URL` | Render Internal Database URL from Step 1 |
-| `USE_S3_STORAGE` | `True` |
-| `AWS_ACCESS_KEY_ID` | R2 / S3 Access Key ID |
-| `AWS_SECRET_ACCESS_KEY` | R2 / S3 Secret Access Key |
-| `AWS_STORAGE_BUCKET_NAME` | Name of your storage bucket |
-| `AWS_S3_ENDPOINT_URL` | `https://<account-id>.r2.cloudflarestorage.com` |
-| `AWS_S3_CUSTOM_DOMAIN` | `pub-<hash>.r2.dev` (allows clean URLs for PPTX/PDF viewers) |
+| `USE_S3_STORAGE` | `False` (default: serves media from local disk for 100% zero-cost demos) |
 | `SECURE_SSL_REDIRECT` | `True` |
 
+#### (Optional) Persistent S3 / Supabase Cloud Storage
+If you wish to retain uploaded documents across Render dyno restarts or spin-downs, set `USE_S3_STORAGE=True` and configure:
+* `AWS_ACCESS_KEY_ID`
+* `AWS_SECRET_ACCESS_KEY`
+* `AWS_STORAGE_BUCKET_NAME`
+* `AWS_S3_ENDPOINT_URL` (e.g. `https://<account_id>.r2.cloudflarestorage.com` or Supabase S3 endpoint)
+* `AWS_S3_REGION_NAME` (e.g. `auto` or your bucket region)
+* `AWS_S3_CUSTOM_DOMAIN` (optional public CDN domain, e.g. `pub-xxxx.r2.dev`)
+
 ### 4. Deploy & Verify
-* Render will trigger `build.sh` to install dependencies, run `collectstatic --no-input`, and execute database migrations.
-* Once the service is live, create an admin user via Render Shell:
+* Render runs `./build.sh` to install dependencies, collect static files with WhiteNoise, and apply migrations.
+* Once the service is live, create an admin user via the Render Shell:
   ```bash
   python manage.py createsuperuser
   ```
-* Open your `https://your-app-name.onrender.com` URL to begin uploading and sharing notes!
+* Open `https://your-app-name.onrender.com` to explore SNES!
 
 ---
 
-## 🔒 Security Best Practices Implemented
+## 🔒 Production Security Hardening
 
-* `SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")` ensures correct HTTPS detection behind Render's reverse proxy.
-* `SESSION_COOKIE_SECURE = True` and `CSRF_COOKIE_SECURE = True` prevent transmission of auth cookies over insecure connections.
-* `X_FRAME_OPTIONS = "SAMEORIGIN"` allows safe embedding of internal PDF previews while protecting against clickjacking.
-* Strict upload validation enforces a 25 MB size cap and file extension / MIME type checking for `.pdf` and `.pptx` documents.
-* Controlled downloads stream file bytes without revealing underlying storage directory structure.
+* **Enforced Secret Key:** Requires `DJANGO_SECRET_KEY` when `DJANGO_DEBUG=False`, preventing unintended production deployment with default dev keys.
+* **WhiteNoise Static Hosting:** Compresses and hashes static assets for cache busting and immediate CDN-ready delivery.
+* **Production Media Serving:** Routes `/media/` via `document_root` when `USE_S3_STORAGE=False` so document previews and downloads function out-of-the-box on Render demos without requiring external S3 accounts.
+* **Reverse Proxy Headers:** `SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")` ensures accurate SSL detection behind Render's reverse proxy.
+* **Secure Cookie Flags:** `SESSION_COOKIE_SECURE = True` and `CSRF_COOKIE_SECURE = True` protect session data from interception.
+* **Clickjacking Protection:** `X_FRAME_OPTIONS = "SAMEORIGIN"` permits inline PDF previews while blocking third-party iframe hijacking.
+* **Storage-Agnostic Downloads:** Controlled downloads use `note.file.open("rb")` and `FileResponse`, decoupling file serving from local filesystem paths.
 
 ---
 

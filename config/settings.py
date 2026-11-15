@@ -23,17 +23,19 @@ if not SECRET_KEY:
         raise ImproperlyConfigured('DJANGO_SECRET_KEY environment variable is required when DJANGO_DEBUG=False.')
 
 # Allowed Hosts & CSRF Trusted Origins
+raw_hosts = os.getenv('DJANGO_ALLOWED_HOSTS', 'localhost,127.0.0.1,.onrender.com')
 ALLOWED_HOSTS = [
     host.strip()
-    for host in os.getenv('DJANGO_ALLOWED_HOSTS', 'localhost,127.0.0.1').split(',')
+    for host in raw_hosts.split(',')
     if host.strip()
 ]
 if 'testserver' not in ALLOWED_HOSTS:
     ALLOWED_HOSTS.append('testserver')
 
+raw_csrf = os.getenv('DJANGO_CSRF_TRUSTED_ORIGINS', 'https://*.onrender.com')
 CSRF_TRUSTED_ORIGINS = [
     origin.strip()
-    for origin in os.getenv('DJANGO_CSRF_TRUSTED_ORIGINS', '').split(',')
+    for origin in raw_csrf.split(',')
     if origin.strip()
 ]
 
@@ -141,7 +143,7 @@ STATICFILES_DIRS = [
     BASE_DIR / 'static',
 ]
 
-# Media files & Storage backends (Local vs. S3/R2)
+# Media files & Storage backends (Local vs. S3/Supabase)
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
 
@@ -156,18 +158,21 @@ if USE_S3_STORAGE:
     AWS_S3_CUSTOM_DOMAIN = os.getenv('AWS_S3_CUSTOM_DOMAIN') or None
     AWS_QUERYSTRING_AUTH = False
 
+    s3_options = {
+        'access_key': AWS_ACCESS_KEY_ID,
+        'secret_key': AWS_SECRET_ACCESS_KEY,
+        'bucket_name': AWS_STORAGE_BUCKET_NAME,
+        'endpoint_url': AWS_S3_ENDPOINT_URL,
+        'region_name': AWS_S3_REGION_NAME,
+        'querystring_auth': AWS_QUERYSTRING_AUTH,
+    }
+    if AWS_S3_CUSTOM_DOMAIN:
+        s3_options['custom_domain'] = AWS_S3_CUSTOM_DOMAIN
+
     STORAGES = {
         'default': {
             'BACKEND': 'storages.backends.s3.S3Storage',
-            'OPTIONS': {
-                'access_key': AWS_ACCESS_KEY_ID,
-                'secret_key': AWS_SECRET_ACCESS_KEY,
-                'bucket_name': AWS_STORAGE_BUCKET_NAME,
-                'endpoint_url': AWS_S3_ENDPOINT_URL,
-                'region_name': AWS_S3_REGION_NAME,
-                'custom_domain': AWS_S3_CUSTOM_DOMAIN,
-                'querystring_auth': AWS_QUERYSTRING_AUTH,
-            },
+            'OPTIONS': s3_options,
         },
         'staticfiles': {
             'BACKEND': 'whitenoise.storage.CompressedManifestStaticFilesStorage',
