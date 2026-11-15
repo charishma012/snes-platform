@@ -736,3 +736,223 @@ class NoteViewsAndPermissionsTests(TestCase):
         )
         self.assertEqual(response.status_code, 405)
 
+
+class HTMXInteractivityTests(TestCase):
+    def setUp(self):
+        self.client = Client()
+        self.user1 = User.objects.create_user(
+            username="student_voter", password="SecurePassword123!"
+        )
+        self.user2 = User.objects.create_user(
+            username="student_peer", password="SecurePassword123!"
+        )
+        self.author = User.objects.create_user(
+            username="prof_author", password="SecurePassword123!"
+        )
+        pdf_bytes = create_test_pdf(num_pages=2)
+        pdf_file = SimpleUploadedFile(
+            "study_notes.pdf", pdf_bytes, content_type="application/pdf"
+        )
+        self.note = Note.objects.create(
+            title="Algorithm Complexity Cheat Sheet",
+            subject="Computer Science",
+            topic="Big-O Analysis",
+            category=Note.Category.CHEAT_SHEET,
+            year=2025,
+            uploader=self.author,
+            file=pdf_file,
+            file_type="PDF",
+            page_count=2,
+        )
+
+    def test_upvote_anonymous_redirect(self):
+        """Anonymous POST to toggle_upvote returns 204 with HX-Redirect header to login."""
+        response = self.client.post(
+            reverse("notes:toggle_upvote", kwargs={"pk": self.note.pk})
+        )
+        self.assertEqual(response.status_code, 204)
+        self.assertEqual(
+            response.headers.get("HX-Redirect"),
+            f"/login/?next=/note/{self.note.pk}/",
+        )
+        self.assertEqual(self.note.vote_score, 0)
+
+    def test_downvote_anonymous_redirect(self):
+        """Anonymous POST to toggle_downvote returns 204 with HX-Redirect header to login."""
+        response = self.client.post(
+            reverse("notes:toggle_downvote", kwargs={"pk": self.note.pk})
+        )
+        self.assertEqual(response.status_code, 204)
+        self.assertEqual(
+            response.headers.get("HX-Redirect"),
+            f"/login/?next=/note/{self.note.pk}/",
+        )
+        self.assertEqual(self.note.vote_score, 0)
+
+    def test_bookmark_anonymous_redirect(self):
+        """Anonymous POST to toggle_bookmark returns 204 with HX-Redirect header to login."""
+        response = self.client.post(
+            reverse("notes:toggle_bookmark", kwargs={"pk": self.note.pk})
+        )
+        self.assertEqual(response.status_code, 204)
+        self.assertEqual(
+            response.headers.get("HX-Redirect"),
+            f"/login/?next=/note/{self.note.pk}/",
+        )
+        self.assertNotIn(self.note, self.user1.bookmarked_notes.all())
+
+    def test_toggle_upvote_lifecycle(self):
+        """Authenticated user can upvote (score +1) and clicking again cancels upvote (score 0)."""
+        self.client.login(username="student_voter", password="SecurePassword123!")
+
+        # 1. First upvote -> score increments to 1
+        response = self.client.post(
+            reverse("notes:toggle_upvote", kwargs={"pk": self.note.pk})
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, "notes/partials/vote_controls.html")
+        self.note.refresh_from_db()
+        self.assertEqual(self.note.vote_score, 1)
+        self.assertTrue(self.note.upvoted_by.filter(pk=self.user1.pk).exists())
+        self.assertContains(response, f'id="vote-controls-{self.note.pk}"')
+        self.assertContains(response, "bg-emerald-500")
+
+        # 2. Second upvote -> cancels upvote, score reverts to 0
+        response2 = self.client.post(
+            reverse("notes:toggle_upvote", kwargs={"pk": self.note.pk})
+        )
+        self.assertEqual(response2.status_code, 200)
+        self.note.refresh_from_db()
+        self.assertEqual(self.note.vote_score, 0)
+        self.assertFalse(self.note.upvoted_by.filter(pk=self.user1.pk).exists())
+        self.assertNotContains(response2, "bg-emerald-500")
+
+    def test_toggle_downvote_lifecycle(self):
+        """Authenticated user can downvote (score -1) and clicking again cancels downvote (score 0)."""
+        self.client.login(username="student_voter", password="SecurePassword123!")
+
+        # 1. First downvote -> score decrements to -1
+        response = self.client.post(
+            reverse("notes:toggle_downvote", kwargs={"pk": self.note.pk})
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, "notes/partials/vote_controls.html")
+        self.note.refresh_from_db()
+        self.assertEqual(self.note.vote_score, -1)
+        self.assertTrue(self.note.downvoted_by.filter(pk=self.user1.pk).exists())
+        self.assertContains(response, f'id="vote-controls-{self.note.pk}"')
+        self.assertContains(response, "bg-rose-500")
+
+        # 2. Second downvote -> cancels downvote, score reverts to 0
+        response2 = self.client.post(
+            reverse("notes:toggle_downvote", kwargs={"pk": self.note.pk})
+        )
+        self.assertEqual(response2.status_code, 200)
+        self.note.refresh_from_db()
+        self.assertEqual(self.note.vote_score, 0)
+        self.assertFalse(self.note.downvoted_by.filter(pk=self.user1.pk).exists())
+        self.assertNotContains(response2, "bg-rose-500")
+
+    def test_mutual_exclusion_upvote_then_downvote(self):
+        """Upvoting (+1) and then clicking downvote immediately flips vote score to -1."""
+        self.client.login(username="student_voter", password="SecurePassword123!")
+
+        # Upvote -> +1
+        self.client.post(
+            reverse("notes:toggle_upvote", kwargs={"pk": self.note.pk})
+        )
+        self.note.refresh_from_db()
+        self.assertEqual(self.note.vote_score, 1)
+        self.assertTrue(self.note.upvoted_by.filter(pk=self.user1.pk).exists())
+        self.assertFalse(self.note.downvoted_by.filter(pk=self.user1.pk).exists())
+
+        # Downvote -> flips to -1 (removes upvote AND adds downvote)
+        response = self.client.post(
+            reverse("notes:toggle_downvote", kwargs={"pk": self.note.pk})
+        )
+        self.assertEqual(response.status_code, 200)
+        self.note.refresh_from_db()
+        self.assertEqual(self.note.vote_score, -1)
+        self.assertFalse(self.note.upvoted_by.filter(pk=self.user1.pk).exists())
+        self.assertTrue(self.note.downvoted_by.filter(pk=self.user1.pk).exists())
+        self.assertContains(response, "bg-rose-500")
+        self.assertNotContains(response, "bg-emerald-500")
+
+    def test_mutual_exclusion_downvote_then_upvote(self):
+        """Downvoting (-1) and then clicking upvote immediately flips vote score to +1."""
+        self.client.login(username="student_voter", password="SecurePassword123!")
+
+        # Downvote -> -1
+        self.client.post(
+            reverse("notes:toggle_downvote", kwargs={"pk": self.note.pk})
+        )
+        self.note.refresh_from_db()
+        self.assertEqual(self.note.vote_score, -1)
+
+        # Upvote -> flips to +1 (removes downvote AND adds upvote)
+        response = self.client.post(
+            reverse("notes:toggle_upvote", kwargs={"pk": self.note.pk})
+        )
+        self.assertEqual(response.status_code, 200)
+        self.note.refresh_from_db()
+        self.assertEqual(self.note.vote_score, 1)
+        self.assertTrue(self.note.upvoted_by.filter(pk=self.user1.pk).exists())
+        self.assertFalse(self.note.downvoted_by.filter(pk=self.user1.pk).exists())
+        self.assertContains(response, "bg-emerald-500")
+        self.assertNotContains(response, "bg-rose-500")
+
+    def test_toggle_bookmark_lifecycle(self):
+        """Authenticated user bookmarks note, adds to user.bookmarked_notes; clicking again removes it."""
+        self.client.login(username="student_voter", password="SecurePassword123!")
+
+        # 1. Bookmark note
+        response = self.client.post(
+            reverse("notes:toggle_bookmark", kwargs={"pk": self.note.pk})
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, "notes/partials/bookmark_button.html")
+        self.assertTrue(self.note.bookmarked_by.filter(pk=self.user1.pk).exists())
+        self.assertIn(self.note, self.user1.bookmarked_notes.all())
+        self.assertContains(response, f'id="bookmark-btn-{self.note.pk}"')
+        self.assertContains(response, "Saved")
+
+        # 2. Toggle off bookmark
+        response2 = self.client.post(
+            reverse("notes:toggle_bookmark", kwargs={"pk": self.note.pk})
+        )
+        self.assertEqual(response2.status_code, 200)
+        self.assertFalse(self.note.bookmarked_by.filter(pk=self.user1.pk).exists())
+        self.assertNotIn(self.note, self.user1.bookmarked_notes.all())
+        self.assertContains(response2, "Save to Study List")
+
+    def test_detail_view_includes_partials(self):
+        """Note detail page embeds vote_controls and bookmark_button partials."""
+        self.client.login(username="student_voter", password="SecurePassword123!")
+        response = self.client.get(
+            reverse("notes:note_detail", kwargs={"pk": self.note.pk})
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, f'id="vote-controls-{self.note.pk}"')
+        self.assertContains(response, f'id="bookmark-btn-{self.note.pk}"')
+        self.assertContains(response, 'hx-post="')
+        self.assertContains(response, 'hx-swap="outerHTML"')
+
+    def test_dashboard_study_list_includes_bookmark_controls(self):
+        """Dashboard Study List tab allows users to toggle/remove saved notes via bookmark control."""
+        self.client.login(username="student_voter", password="SecurePassword123!")
+        self.note.bookmarked_by.add(self.user1)
+
+        response = self.client.get(reverse("notes:my_dashboard"))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, f'id="bookmark-btn-{self.note.pk}"')
+        self.assertContains(response, "Saved")
+
+    def test_get_methods_not_allowed_for_toggles(self):
+        """GET requests to toggle endpoints return 405 Method Not Allowed."""
+        self.client.login(username="student_voter", password="SecurePassword123!")
+        for url_name in ("notes:toggle_upvote", "notes:toggle_downvote", "notes:toggle_bookmark"):
+            with self.subTest(url=url_name):
+                resp = self.client.get(reverse(url_name, kwargs={"pk": self.note.pk}))
+                self.assertEqual(resp.status_code, 405)
+
+

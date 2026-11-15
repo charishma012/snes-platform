@@ -254,3 +254,83 @@ def report_note(request: HttpRequest, pk: int) -> HttpResponse:
         "Thank you. This note has been flagged for admin review.",
     )
     return redirect("notes:note_detail", pk=note.pk)
+
+
+@require_POST
+def toggle_upvote(request: HttpRequest, pk: int) -> HttpResponse:
+    """
+    Toggles the upvote status of a note for the authenticated user.
+    Enforces mutual exclusion with downvotes.
+    Returns the vote_controls partial for HTMX swap.
+    """
+    if not request.user.is_authenticated:
+        return HttpResponse(
+            status=204,
+            headers={"HX-Redirect": f"/login/?next=/note/{pk}/"},
+        )
+
+    note = get_object_or_404(Note, pk=pk)
+    if note.upvoted_by.filter(pk=request.user.pk).exists():
+        note.upvoted_by.remove(request.user)
+    else:
+        note.upvoted_by.add(request.user)
+        note.downvoted_by.remove(request.user)
+
+    return render(
+        request,
+        "notes/partials/vote_controls.html",
+        {"note": note},
+    )
+
+
+@require_POST
+def toggle_downvote(request: HttpRequest, pk: int) -> HttpResponse:
+    """
+    Toggles the downvote status of a note for the authenticated user.
+    Enforces mutual exclusion with upvotes.
+    Returns the vote_controls partial for HTMX swap.
+    """
+    if not request.user.is_authenticated:
+        return HttpResponse(
+            status=204,
+            headers={"HX-Redirect": f"/login/?next=/note/{pk}/"},
+        )
+
+    note = get_object_or_404(Note, pk=pk)
+    if note.downvoted_by.filter(pk=request.user.pk).exists():
+        note.downvoted_by.remove(request.user)
+    else:
+        note.downvoted_by.add(request.user)
+        note.upvoted_by.remove(request.user)
+
+    return render(
+        request,
+        "notes/partials/vote_controls.html",
+        {"note": note},
+    )
+
+
+@require_POST
+def toggle_bookmark(request: HttpRequest, pk: int) -> HttpResponse:
+    """
+    Toggles the bookmark status of a note for the authenticated user.
+    Returns the bookmark_button partial for HTMX swap.
+    """
+    if not request.user.is_authenticated:
+        return HttpResponse(
+            status=204,
+            headers={"HX-Redirect": f"/login/?next=/note/{pk}/"},
+        )
+
+    note = get_object_or_404(Note, pk=pk)
+    if note.bookmarked_by.filter(pk=request.user.pk).exists():
+        note.bookmarked_by.remove(request.user)
+    else:
+        note.bookmarked_by.add(request.user)
+
+    return render(
+        request,
+        "notes/partials/bookmark_button.html",
+        {"note": note},
+    )
+

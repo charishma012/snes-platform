@@ -18,4 +18,11 @@ urlpatterns = [
     path("note/<int:pk>/delete/", views.delete_note, name="delete_note"),
     path("note/<int:pk>/download/", views.download_note, name="download_note"),
     path("note/<int:pk>/report/", views.report_note, name="report_note"),
+    # Phase 4 HTMX Interactivity (Voting & Bookmarks)
+    path("note/<int:pk>/upvote/", views.toggle_upvote, name="toggle_upvote"),
+    path("note/<int:pk>/upvote/", views.toggle_upvote, name="upvote_note"),
+    path("note/<int:pk>/downvote/", views.toggle_downvote, name="toggle_downvote"),
+    path("note/<int:pk>/downvote/", views.toggle_downvote, name="downvote_note"),
+    path("note/<int:pk>/bookmark/", views.toggle_bookmark, name="toggle_bookmark"),
+    path("note/<int:pk>/bookmark/", views.toggle_bookmark, name="bookmark_note"),
 ]
