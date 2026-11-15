@@ -5,6 +5,7 @@ app_name = "notes"
 
 urlpatterns = [
     path("", views.home, name="home"),
+    path("browse/", views.browse_notes, name="browse"),
     path("register/", views.register_view, name="register"),
     path("login/", views.UserLoginView.as_view(), name="login"),
     path("logout/", views.UserLogoutView.as_view(), name="logout"),

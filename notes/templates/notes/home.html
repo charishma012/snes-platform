@@ -1,82 +1,169 @@
 {% extends "base.html" %}
 
-{% block title %}Home - Smart Notes Exchange System (SNES){% endblock %}
+{% block title %}SNES - Smart Notes Exchange System | Academic Notes, Summaries & PYQs{% endblock %}
 
 {% block content %}
-<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 md:py-16">
-    <!-- Hero Section -->
-    <div class="text-center max-w-3xl mx-auto space-y-6">
-        <div class="inline-flex items-center space-x-2 px-3 py-1 rounded-full bg-sky-50 border border-sky-200 text-sky-700 text-xs font-semibold tracking-wide uppercase">
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 md:py-16 space-y-16">
+
+    <!-- Hero Search Section -->
+    <section class="text-center max-w-4xl mx-auto space-y-6">
+        <div class="inline-flex items-center space-x-2 px-3.5 py-1.5 rounded-full bg-sky-50 border border-sky-200 text-sky-700 text-xs font-semibold tracking-wide uppercase shadow-sm">
             <span class="w-2 h-2 rounded-full bg-sky-500 animate-pulse"></span>
             <span>Academic Note-Sharing Platform</span>
         </div>
-        
+
         <h1 class="text-4xl sm:text-5xl lg:text-6xl font-black text-slate-900 tracking-tight leading-tight">
             Exchange Knowledge.<br/>
             <span class="bg-gradient-to-r from-sky-600 to-indigo-600 bg-clip-text text-transparent">Excel in Your Studies.</span>
         </h1>
 
-        <p class="text-lg text-slate-600 leading-relaxed">
-            Access curated lecture notes, exam prep summaries, and presentation slides shared by fellow students. High-quality <span class="font-semibold text-slate-800">PDF</span> and <span class="font-semibold text-slate-800">PPTX</span> study materials at your fingertips.
+        <p class="text-base sm:text-lg text-slate-600 max-w-2xl mx-auto leading-relaxed">
+            Discover peer-reviewed lecture notes, exam cheat sheets, and past papers shared by fellow students. Curated <span class="font-semibold text-slate-800">PDF</span> and <span class="font-semibold text-slate-800">PPTX</span> study materials at your fingertips.
         </p>
 
-        <!-- Search Bar Placeholder / Action Buttons -->
-        <div class="flex flex-col sm:flex-row items-center justify-center gap-4 pt-4">
-            <a href="#" class="w-full sm:w-auto px-6 py-3.5 bg-sky-600 hover:bg-sky-700 text-white font-medium rounded-xl shadow-sm hover:shadow transition-all flex items-center justify-center space-x-2">
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                </svg>
-                <span>Browse Notes</span>
+        <!-- Search Bar Form submitting ?q= to /browse/ -->
+        <div class="max-w-2xl mx-auto pt-2">
+            <form action="{% url 'notes:browse' %}" method="GET" class="relative flex items-center shadow-lg rounded-2xl bg-white border border-slate-200 focus-within:border-sky-500 focus-within:ring-4 focus-within:ring-sky-100 transition-all p-1.5">
+                <div class="pl-3.5 text-slate-400">
+                    <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                    </svg>
+                </div>
+                <input
+                    type="text"
+                    name="q"
+                    placeholder="Search by title, subject, or topic (e.g. Data Structures, Calculus)..."
+                    class="w-full px-3 py-2.5 text-sm sm:text-base text-slate-800 placeholder-slate-400 bg-transparent focus:outline-none"
+                    autocomplete="off"
+                >
+                <button
+                    type="submit"
+                    class="px-5 py-2.5 bg-sky-600 hover:bg-sky-700 text-white font-semibold text-sm rounded-xl shadow-sm hover:shadow transition flex items-center space-x-1.5 flex-shrink-0"
+                >
+                    <span>Search</span>
+                </button>
+            </form>
+        </div>
+
+        <!-- Quick-Click Filter Pills: Categories & Recent Years -->
+        <div class="pt-3 space-y-3">
+            <!-- Categories -->
+            <div class="flex flex-wrap items-center justify-center gap-2">
+                <span class="text-xs font-semibold uppercase tracking-wider text-slate-400 mr-1">Categories:</span>
+                <a href="{% url 'notes:browse' %}?category=NOTES" class="px-3 py-1 rounded-full text-xs font-medium bg-white text-slate-700 border border-slate-200 hover:border-sky-300 hover:text-sky-600 hover:bg-sky-50 shadow-sm transition">
+                    📘 Lecture Notes
+                </a>
+                <a href="{% url 'notes:browse' %}?category=CHEAT_SHEET" class="px-3 py-1 rounded-full text-xs font-medium bg-white text-slate-700 border border-slate-200 hover:border-amber-300 hover:text-amber-700 hover:bg-amber-50 shadow-sm transition">
+                    ⚡ Cheat Sheets
+                </a>
+                <a href="{% url 'notes:browse' %}?category=PYQ" class="px-3 py-1 rounded-full text-xs font-medium bg-white text-slate-700 border border-slate-200 hover:border-emerald-300 hover:text-emerald-700 hover:bg-emerald-50 shadow-sm transition">
+                    📝 PYQs
+                </a>
+                <a href="{% url 'notes:browse' %}?category=ASSIGNMENT" class="px-3 py-1 rounded-full text-xs font-medium bg-white text-slate-700 border border-slate-200 hover:border-purple-300 hover:text-purple-700 hover:bg-purple-50 shadow-sm transition">
+                    🎯 Assignments
+                </a>
+            </div>
+
+            <!-- Recent Years -->
+            <div class="flex flex-wrap items-center justify-center gap-2">
+                <span class="text-xs font-semibold uppercase tracking-wider text-slate-400 mr-1">Recent Years:</span>
+                <a href="{% url 'notes:browse' %}?year=2026" class="px-2.5 py-1 rounded-full text-xs font-medium bg-slate-100 text-slate-700 hover:bg-slate-200 transition">
+                    2026
+                </a>
+                <a href="{% url 'notes:browse' %}?year=2025" class="px-2.5 py-1 rounded-full text-xs font-medium bg-slate-100 text-slate-700 hover:bg-slate-200 transition">
+                    2025
+                </a>
+                <a href="{% url 'notes:browse' %}?year=2024" class="px-2.5 py-1 rounded-full text-xs font-medium bg-slate-100 text-slate-700 hover:bg-slate-200 transition">
+                    2024
+                </a>
+                <a href="{% url 'notes:browse' %}?year=2023" class="px-2.5 py-1 rounded-full text-xs font-medium bg-slate-100 text-slate-700 hover:bg-slate-200 transition">
+                    2023
+                </a>
+            </div>
+        </div>
+    </section>
+
+    <!-- Top Rated & Most Helpful Section -->
+    <section class="space-y-6">
+        <div class="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-2 border-b border-slate-200 pb-4">
+            <div>
+                <div class="flex items-center space-x-2 text-sky-600 font-semibold text-xs uppercase tracking-wider">
+                    <svg class="w-4 h-4 text-amber-500" fill="currentColor" viewBox="0 0 20 20">
+                        <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                    </svg>
+                    <span>Community Recommendations</span>
+                </div>
+                <h2 class="text-2xl font-black text-slate-900 tracking-tight mt-1">
+                    Top Rated & Most Helpful
+                </h2>
+                <p class="text-xs sm:text-sm text-slate-500 mt-0.5">
+                    Ranked by peer upvotes and verified downloads
+                </p>
+            </div>
+            <a href="{% url 'notes:browse' %}?sort=top" class="text-sm font-semibold text-sky-600 hover:text-sky-700 flex items-center space-x-1 group self-start sm:self-auto">
+                <span>View all ranked</span>
+                <span class="group-hover:translate-x-1 transition-transform">&rarr;</span>
             </a>
-            <a href="#" class="w-full sm:w-auto px-6 py-3.5 bg-white hover:bg-slate-50 border border-slate-300 text-slate-700 font-medium rounded-xl shadow-sm hover:shadow-md transition-all flex items-center justify-center space-x-2">
-                <svg class="w-5 h-5 text-sky-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
-                </svg>
-                <span>Upload Study Materials</span>
+        </div>
+
+        {% if top_notes %}
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                {% for note in top_notes %}
+                    {% include "notes/partials/note_card.html" with note=note %}
+                {% endfor %}
+            </div>
+        {% else %}
+            <div class="text-center py-12 bg-white rounded-2xl border border-slate-200 shadow-sm p-8">
+                <p class="text-slate-500 text-sm">No notes have been ranked yet. Be the first to upload and vote!</p>
+            </div>
+        {% endif %}
+    </section>
+
+    <!-- Recently Uploaded Section -->
+    <section class="space-y-6">
+        <div class="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-2 border-b border-slate-200 pb-4">
+            <div>
+                <div class="flex items-center space-x-2 text-indigo-600 font-semibold text-xs uppercase tracking-wider">
+                    <svg class="w-4 h-4 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <span>Fresh Content</span>
+                </div>
+                <h2 class="text-2xl font-black text-slate-900 tracking-tight mt-1">
+                    Recently Uploaded
+                </h2>
+                <p class="text-xs sm:text-sm text-slate-500 mt-0.5">
+                    Latest course documents and materials shared by students
+                </p>
+            </div>
+            <a href="{% url 'notes:browse' %}" class="text-sm font-semibold text-sky-600 hover:text-sky-700 flex items-center space-x-1 group self-start sm:self-auto">
+                <span>View All Notes</span>
+                <span class="group-hover:translate-x-1 transition-transform">&rarr;</span>
             </a>
         </div>
-    </div>
 
-    <!-- Feature Grid -->
-    <div class="mt-20 grid grid-cols-1 md:grid-cols-3 gap-8">
-        <!-- Feature 1 -->
-        <div class="bg-white p-8 rounded-2xl border border-slate-200/80 shadow-sm hover:shadow-md transition-shadow">
-            <div class="w-12 h-12 rounded-xl bg-sky-100 text-sky-700 flex items-center justify-center mb-5 font-bold">
-                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                </svg>
+        {% if recent_notes %}
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                {% for note in recent_notes %}
+                    {% include "notes/partials/note_card.html" with note=note %}
+                {% endfor %}
             </div>
-            <h3 class="text-xl font-bold text-slate-900 mb-2">Verified Formats</h3>
-            <p class="text-sm text-slate-600 leading-relaxed">
-                Clean and structured PDF documents and PowerPoint presentations curated specifically for courses and modules.
-            </p>
-        </div>
+        {% else %}
+            <div class="text-center py-12 bg-white rounded-2xl border border-slate-200 shadow-sm p-8">
+                <p class="text-slate-500 text-sm">No notes have been uploaded yet.</p>
+                <a href="{% url 'notes:upload_note' %}" class="inline-block mt-3 px-4 py-2 bg-sky-600 text-white text-xs font-semibold rounded-lg hover:bg-sky-700">
+                    Upload First Note
+                </a>
+            </div>
+        {% endif %}
 
-        <!-- Feature 2 -->
-        <div class="bg-white p-8 rounded-2xl border border-slate-200/80 shadow-sm hover:shadow-md transition-shadow">
-            <div class="w-12 h-12 rounded-xl bg-indigo-100 text-indigo-700 flex items-center justify-center mb-5 font-bold">
-                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
-                </svg>
-            </div>
-            <h3 class="text-xl font-bold text-slate-900 mb-2">Peer Ratings & Reviews</h3>
-            <p class="text-sm text-slate-600 leading-relaxed">
-                Find the most helpful notes quickly based on ratings, helpfulness votes, and feedback from classmates.
-            </p>
+        <!-- Bottom View All Button -->
+        <div class="text-center pt-4">
+            <a href="{% url 'notes:browse' %}" class="inline-flex items-center space-x-2 px-6 py-3 rounded-xl bg-white border border-slate-300 text-slate-700 hover:border-sky-500 hover:text-sky-600 font-semibold text-sm shadow-sm hover:shadow transition">
+                <span>View All Notes &rarr;</span>
+            </a>
         </div>
+    </section>
 
-        <!-- Feature 3 -->
-        <div class="bg-white p-8 rounded-2xl border border-slate-200/80 shadow-sm hover:shadow-md transition-shadow">
-            <div class="w-12 h-12 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center mb-5 font-bold">
-                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
-                </svg>
-            </div>
-            <h3 class="text-xl font-bold text-slate-900 mb-2">Study Lists & Bookmarks</h3>
-            <p class="text-sm text-slate-600 leading-relaxed">
-                Organize documents into personal study lists for midterm preparation, finals review, and group study sessions.
-            </p>
-        </div>
-    </div>
 </div>
 {% endblock %}

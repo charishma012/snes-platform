@@ -422,6 +422,48 @@ class NoteFormValidationTests(TestCase):
         self.assertIn("file", form.errors)
         self.assertIn("Only PDF (.pdf) and PowerPoint (.pptx)", form.errors["file"][0])
 
+    def test_upload_exe_rejected(self):
+        """Uploading executable (.exe) files is strictly rejected."""
+        exe_file = SimpleUploadedFile(
+            "malicious.exe",
+            b"MZ\x90\x00binary",
+            content_type="application/octet-stream",
+        )
+        form = NoteUploadForm(
+            data={
+                "title": "Malicious Executable",
+                "subject": "Security",
+                "topic": "Exploits",
+                "category": Note.Category.NOTES,
+                "year": 2024,
+            },
+            files={"file": exe_file},
+        )
+        self.assertFalse(form.is_valid())
+        self.assertIn("file", form.errors)
+        self.assertIn("Only PDF (.pdf) and PowerPoint (.pptx)", form.errors["file"][0])
+
+    def test_upload_txt_rejected(self):
+        """Uploading plain text (.txt) files is strictly rejected."""
+        txt_file = SimpleUploadedFile(
+            "notes.txt",
+            b"plain text content",
+            content_type="text/plain",
+        )
+        form = NoteUploadForm(
+            data={
+                "title": "Plain Text Notes",
+                "subject": "Literature",
+                "topic": "Poetry",
+                "category": Note.Category.NOTES,
+                "year": 2024,
+            },
+            files={"file": txt_file},
+        )
+        self.assertFalse(form.is_valid())
+        self.assertIn("file", form.errors)
+        self.assertIn("Only PDF (.pdf) and PowerPoint (.pptx)", form.errors["file"][0])
+
     def test_upload_file_size_exceeded_rejected(self):
         """Files exceeding 25 MB are rejected by validation."""
         fake_large_file = SimpleUploadedFile(
@@ -954,5 +996,300 @@ class HTMXInteractivityTests(TestCase):
             with self.subTest(url=url_name):
                 resp = self.client.get(reverse(url_name, kwargs={"pk": self.note.pk}))
                 self.assertEqual(resp.status_code, 405)
+
+
+class DiscoveryHomepageAndBrowseTests(TestCase):
+    def setUp(self):
+        self.client = Client()
+        self.author = User.objects.create_user(
+            username="prof_turing", password="SecurePassword123!"
+        )
+        self.student_a = User.objects.create_user(
+            username="student_ada", password="SecurePassword123!"
+        )
+        self.student_b = User.objects.create_user(
+            username="student_boole", password="SecurePassword123!"
+        )
+        self.student_c = User.objects.create_user(
+            username="student_curie", password="SecurePassword123!"
+        )
+
+        pdf_bytes = create_test_pdf(num_pages=14)
+        pdf_file = SimpleUploadedFile(
+            "discrete_math.pdf", pdf_bytes, content_type="application/pdf"
+        )
+        self.note1 = Note.objects.create(
+            title="Discrete Mathematics Master Guide",
+            description="Complete coverage of graph theory and propositional logic.",
+            file=pdf_file,
+            subject="Mathematics",
+            topic="Graph Theory",
+            category=Note.Category.NOTES,
+            year=2026,
+            uploader=self.author,
+            page_count=14,
+            file_type="PDF",
+            downloads=20,
+        )
+
+        pptx_file = SimpleUploadedFile(
+            "deep_learning_slides.pptx",
+            b"PK\x03\x04fake pptx slides",
+            content_type="application/vnd.openxmlformats-officedocument.presentationml.presentation",
+        )
+        self.note2 = Note.objects.create(
+            title="Deep Learning Convolutional Networks",
+            description="CNN architectures and backpropagation slides.",
+            file=pptx_file,
+            subject="Computer Science",
+            topic="Neural Networks",
+            category=Note.Category.CHEAT_SHEET,
+            year=2025,
+            uploader=self.author,
+            file_type="PPTX",
+            downloads=5,
+        )
+
+        pdf_file_pyq = SimpleUploadedFile(
+            "algorithms_pyq_2024.pdf", pdf_bytes, content_type="application/pdf"
+        )
+        self.note3 = Note.objects.create(
+            title="Algorithms Final Exam 2024 Past Paper",
+            description="Official past questions with dynamic programming solutions.",
+            file=pdf_file_pyq,
+            subject="Computer Science",
+            topic="Dynamic Programming",
+            category=Note.Category.PYQ,
+            year=2024,
+            uploader=self.author,
+            page_count=8,
+            file_type="PDF",
+            downloads=50,
+        )
+
+        pdf_file_assign = SimpleUploadedFile(
+            "physics_assignment.pdf", pdf_bytes, content_type="application/pdf"
+        )
+        self.note4 = Note.objects.create(
+            title="Quantum Mechanics Assignment 2",
+            description="Schrodinger equation problem set with verified proofs.",
+            file=pdf_file_assign,
+            subject="Physics",
+            topic="Quantum Mechanics",
+            category=Note.Category.ASSIGNMENT,
+            year=2023,
+            uploader=self.author,
+            page_count=5,
+            file_type="PDF",
+            downloads=1,
+        )
+
+        # Set up votes for quality_score verification:
+        # formula: quality_score = (upvotes - downvotes) + (downloads * 0.2)
+        # Note 3: 3 upvotes, 0 downvotes, 50 downloads -> (3 - 0) + 50*0.2 = 13.0
+        self.note3.upvoted_by.add(self.student_a, self.student_b, self.student_c)
+
+        # Note 1: 2 upvotes, 0 downvotes, 20 downloads -> (2 - 0) + 20*0.2 = 6.0
+        self.note1.upvoted_by.add(self.student_a, self.student_b)
+
+        # Note 2: 1 upvote, 0 downvotes, 5 downloads -> (1 - 0) + 5*0.2 = 2.0
+        self.note2.upvoted_by.add(self.student_a)
+
+        # Note 4: 0 upvotes, 2 downvotes, 1 download -> (0 - 2) + 1*0.2 = -1.8
+        self.note4.downvoted_by.add(self.student_a, self.student_b)
+
+    def test_anonymous_access_homepage(self):
+        """Anonymous visitor can access homepage (200), seeing hero search and ranked sections."""
+        response = self.client.get(reverse("notes:home"))
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, "notes/home.html")
+        self.assertTemplateUsed(response, "notes/partials/note_card.html")
+
+        # Check Hero Search elements
+        self.assertContains(response, 'action="/browse/"')
+        self.assertContains(response, 'name="q"')
+        self.assertContains(response, "Lecture Notes")
+        self.assertContains(response, "Cheat Sheets")
+        self.assertContains(response, "PYQs")
+        self.assertContains(response, "Assignments")
+        self.assertContains(response, "2026")
+        self.assertContains(response, "2025")
+        self.assertContains(response, "2024")
+        self.assertContains(response, "2023")
+
+        # Check section headings and links
+        self.assertContains(response, "Top Rated & Most Helpful")
+        self.assertContains(response, "Recently Uploaded")
+        self.assertContains(response, "View All Notes")
+
+        # Check that top_notes context contains our notes ordered by quality_score
+        top_notes = list(response.context["top_notes"])
+        self.assertEqual(top_notes[0], self.note3)
+        self.assertEqual(top_notes[1], self.note1)
+
+    def test_anonymous_access_browse(self):
+        """Anonymous visitor can access /browse/ (200) and view note cards."""
+        response = self.client.get(reverse("notes:browse"))
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, "notes/browse.html")
+        self.assertTemplateUsed(response, "notes/partials/note_card.html")
+        self.assertContains(response, "Browse Study Materials")
+        self.assertContains(response, self.note1.title)
+        self.assertContains(response, self.note2.title)
+        self.assertContains(response, self.note3.title)
+        self.assertContains(response, self.note4.title)
+
+    def test_note_card_rendering_details(self):
+        """Note card partial renders title link, badges, format, page count, and metrics."""
+        response = self.client.get(reverse("notes:browse"))
+        self.assertEqual(response.status_code, 200)
+
+        # Title link
+        self.assertContains(response, reverse("notes:note_detail", kwargs={"pk": self.note1.pk}))
+        # Category badges
+        self.assertContains(response, "Lecture Notes")
+        self.assertContains(response, "Cheat Sheet / Summary")
+        self.assertContains(response, "Past Exam Paper (PYQ)")
+        # Year badges
+        self.assertContains(response, "2026")
+        self.assertContains(response, "2025")
+        # File format & page count
+        self.assertContains(response, "14 pages &bull; PDF")
+        self.assertContains(response, "PPTX")
+        # Metrics: Net votes, downloads, and uploader
+        self.assertContains(response, "prof_turing")
+        self.assertContains(response, "▲")
+        self.assertContains(response, "⬇")
+
+    def test_search_q_keyword_matching(self):
+        """Keyword search ?q= matches title, subject, topic, and description case-insensitively."""
+        # 1. Matches title
+        resp1 = self.client.get(reverse("notes:browse"), {"q": "Master Guide"})
+        self.assertContains(resp1, self.note1.title)
+        self.assertNotContains(resp1, self.note2.title)
+
+        # 2. Matches subject
+        resp2 = self.client.get(reverse("notes:browse"), {"q": "PHYSICS"})
+        self.assertContains(resp2, self.note4.title)
+        self.assertNotContains(resp2, self.note1.title)
+
+        # 3. Matches topic
+        resp3 = self.client.get(reverse("notes:browse"), {"q": "Neural Networks"})
+        self.assertContains(resp3, self.note2.title)
+        self.assertNotContains(resp3, self.note3.title)
+
+        # 4. Matches description
+        resp4 = self.client.get(reverse("notes:browse"), {"q": "Schrodinger equation"})
+        self.assertContains(resp4, self.note4.title)
+        self.assertNotContains(resp4, self.note1.title)
+
+    def test_category_filter(self):
+        """Filter by ?category= isolates only notes in that category."""
+        resp = self.client.get(reverse("notes:browse"), {"category": "PYQ"})
+        self.assertContains(resp, self.note3.title)
+        self.assertNotContains(resp, self.note1.title)
+        self.assertNotContains(resp, self.note2.title)
+        self.assertNotContains(resp, self.note4.title)
+
+    def test_year_filter(self):
+        """Filter by ?year= isolates notes from the selected academic year."""
+        resp = self.client.get(reverse("notes:browse"), {"year": "2024"})
+        self.assertContains(resp, self.note3.title)
+        self.assertNotContains(resp, self.note1.title)
+        self.assertNotContains(resp, self.note2.title)
+
+        # Invalid year does not crash
+        resp_invalid = self.client.get(reverse("notes:browse"), {"year": "invalid_year"})
+        self.assertEqual(resp_invalid.status_code, 200)
+
+    def test_subject_filter(self):
+        """Filter by ?subject= performs case-insensitive subject substring matching."""
+        resp = self.client.get(reverse("notes:browse"), {"subject": "computer"})
+        self.assertContains(resp, self.note2.title)
+        self.assertContains(resp, self.note3.title)
+        self.assertNotContains(resp, self.note1.title)
+        self.assertNotContains(resp, self.note4.title)
+
+    def test_combined_filters(self):
+        """Seamlessly combines q, category, year, and subject parameters."""
+        resp = self.client.get(
+            reverse("notes:browse"),
+            {
+                "q": "Past Paper",
+                "category": "PYQ",
+                "year": "2024",
+                "subject": "Computer Science",
+            },
+        )
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, self.note3.title)
+        self.assertNotContains(resp, self.note1.title)
+        self.assertNotContains(resp, self.note2.title)
+        self.assertNotContains(resp, self.note4.title)
+
+    def test_quality_score_composite_ordering(self):
+        """
+        Verify composite quality_score ordering:
+        formula: (upvotes - downvotes) + (downloads * 0.2)
+        Note 3: (3 - 0) + 50*0.2 = 13.0
+        Note 1: (2 - 0) + 20*0.2 = 6.0
+        Note 2: (1 - 0) + 5*0.2  = 2.0
+        Note 4: (0 - 2) + 1*0.2  = -1.8
+        """
+        resp = self.client.get(reverse("notes:browse"), {"sort": "top"})
+        self.assertEqual(resp.status_code, 200)
+        notes = list(resp.context["page_obj"])
+        self.assertEqual([n.pk for n in notes], [self.note3.pk, self.note1.pk, self.note2.pk, self.note4.pk])
+
+    def test_sort_recent_and_downloads(self):
+        """Sort by recent (-created_at) and downloads (-downloads) options."""
+        # 1. Most downloaded
+        resp_dl = self.client.get(reverse("notes:browse"), {"sort": "downloads"})
+        notes_dl = list(resp_dl.context["page_obj"])
+        self.assertEqual(notes_dl[0].pk, self.note3.pk)  # 50 downloads
+        self.assertEqual(notes_dl[1].pk, self.note1.pk)  # 20 downloads
+
+        # 2. Most recent
+        resp_rec = self.client.get(reverse("notes:browse"), {"sort": "recent"})
+        notes_rec = list(resp_rec.context["page_obj"])
+        self.assertEqual(notes_rec[0].pk, self.note4.pk)  # Created last
+
+    def test_pagination_and_query_param_preservation(self):
+        """Paginator limits to 12 items per page and preserves query parameters across page links."""
+        pdf_bytes = create_test_pdf(num_pages=1)
+        # Create 10 more notes so total = 14
+        for i in range(10):
+            Note.objects.create(
+                title=f"Bulk Paged Note {i}",
+                file=SimpleUploadedFile(f"bulk_{i}.pdf", pdf_bytes, content_type="application/pdf"),
+                subject="Mathematics",
+                topic=f"Topic {i}",
+                category=Note.Category.NOTES,
+                year=2026,
+                uploader=self.author,
+            )
+
+        resp_all_p1 = self.client.get(reverse("notes:browse"), {"sort": "recent", "page": "1"})
+        self.assertEqual(len(resp_all_p1.context["page_obj"]), 12)
+        self.assertTrue(resp_all_p1.context["page_obj"].has_next())
+        self.assertContains(resp_all_p1, "page=2")
+        self.assertContains(resp_all_p1, "sort=recent")
+
+        resp_all_p2 = self.client.get(reverse("notes:browse"), {"sort": "recent", "page": "2"})
+        self.assertEqual(len(resp_all_p2.context["page_obj"]), 2)
+
+    def test_empty_state_and_reset_filters(self):
+        """Displays empty state with Reset Filters button when no notes match search."""
+        resp = self.client.get(reverse("notes:browse"), {"q": "NonExistentQueryZXY999"})
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, "No matching notes found")
+        self.assertContains(resp, "Reset Filters")
+        self.assertContains(resp, reverse("notes:browse"))
+
+    def test_base_navbar_browse_link(self):
+        """Navbar 'Browse Notes' link routes to reverse('notes:browse')."""
+        resp = self.client.get(reverse("notes:home"))
+        self.assertContains(resp, reverse("notes:browse"))
+
 
 

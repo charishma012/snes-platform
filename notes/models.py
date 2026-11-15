@@ -77,6 +77,8 @@ class Note(models.Model):
     @property
     def vote_score(self) -> int:
         """Returns net community vote score: upvotes minus downvotes."""
+        if hasattr(self, "upvotes_count") and hasattr(self, "downvotes_count"):
+            return self.upvotes_count - self.downvotes_count
         return self.upvoted_by.count() - self.downvoted_by.count()
 
     @property

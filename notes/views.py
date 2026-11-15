@@ -3,7 +3,8 @@ from django.contrib import messages
 from django.contrib.auth import login
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.views import LoginView, LogoutView
-from django.db.models import F
+from django.core.paginator import Paginator
+from django.db.models import Count, ExpressionWrapper, F, FloatField, Q
 from django.http import (
     FileResponse,
     Http404,
@@ -19,9 +20,124 @@ from .forms import NoteEditForm, NoteUploadForm, UserLoginForm, UserRegisterForm
 from .models import Note
 
 
+def get_annotated_notes():
+    """Returns Note queryset annotated with upvotes, downvotes, and composite quality_score."""
+    return Note.objects.select_related("uploader").annotate(
+        upvotes_count=Count("upvoted_by", distinct=True),
+        downvotes_count=Count("downvoted_by", distinct=True),
+        quality_score=ExpressionWrapper(
+            (Count("upvoted_by", distinct=True) - Count("downvoted_by", distinct=True))
+            + (F("downloads") * 0.2),
+            output_field=FloatField(),
+        ),
+    )
+
+
 def home(request: HttpRequest) -> HttpResponse:
-    """Renders the SNES landing page."""
-    return render(request, "notes/home.html")
+    """
+    Renders the SNES discovery landing page featuring:
+    - Hero search & quick-filter category/year pills
+    - Top 6 notes ordered by composite quality_score
+    - Latest 6 recently uploaded notes
+    """
+    base_qs = get_annotated_notes()
+    top_notes = base_qs.order_by("-quality_score", "-created_at")[:6]
+    recent_notes = base_qs.order_by("-created_at")[:6]
+
+    return render(
+        request,
+        "notes/home.html",
+        {
+            "top_notes": top_notes,
+            "recent_notes": recent_notes,
+        },
+    )
+
+
+def browse_notes(request: HttpRequest) -> HttpResponse:
+    """
+    Public discovery & multi-filter search directory for academic notes.
+    Supports filtering by keyword (q), category, year, and subject, with
+    composite quality_score, recent, or downloads sorting, plus pagination.
+    """
+    queryset = get_annotated_notes()
+
+    # Query parameters
+    q = request.GET.get("q", "").strip()
+    category = request.GET.get("category", "").strip()
+    year = request.GET.get("year", "").strip()
+    subject = request.GET.get("subject", "").strip()
+    sort = request.GET.get("sort", "top").strip()
+
+    # Search keyword
+    if q:
+        queryset = queryset.filter(
+            Q(title__icontains=q)
+            | Q(subject__icontains=q)
+            | Q(topic__icontains=q)
+            | Q(description__icontains=q)
+        )
+
+    # Category filter
+    valid_categories = dict(Note.Category.choices)
+    if category and category in valid_categories:
+        queryset = queryset.filter(category=category)
+
+    # Year filter
+    if year:
+        try:
+            year_val = int(year)
+            queryset = queryset.filter(year=year_val)
+        except (ValueError, TypeError):
+            pass
+
+    # Subject filter
+    if subject:
+        queryset = queryset.filter(subject__icontains=subject)
+
+    # Sorting
+    if sort == "recent":
+        queryset = queryset.order_by("-created_at")
+    elif sort == "downloads":
+        queryset = queryset.order_by("-downloads", "-created_at")
+    else:
+        # Default: "top" (quality_score descending, then -created_at)
+        sort = "top"
+        queryset = queryset.order_by("-quality_score", "-created_at")
+
+    # Pagination: 12 notes per page
+    paginator = Paginator(queryset, 12)
+    page_number = request.GET.get("page", 1)
+    page_obj = paginator.get_page(page_number)
+
+    # Preserve active query parameters across pagination links
+    query_params = request.GET.copy()
+    if "page" in query_params:
+        query_params.pop("page")
+    querystring = query_params.urlencode()
+
+    # Determine if any filter is active
+    has_active_filters = bool(q or category or year or subject or (sort and sort != "top"))
+
+    return render(
+        request,
+        "notes/browse.html",
+        {
+            "page_obj": page_obj,
+            "paginator": paginator,
+            "is_paginated": page_obj.has_other_pages(),
+            "total_count": paginator.count,
+            "q": q,
+            "selected_category": category,
+            "selected_year": year,
+            "selected_subject": subject,
+            "selected_sort": sort,
+            "categories": Note.Category.choices,
+            "year_choices": Note.YEAR_CHOICES,
+            "querystring": querystring,
+            "has_active_filters": has_active_filters,
+        },
+    )
 
 
 def register_view(request: HttpRequest) -> HttpResponse:

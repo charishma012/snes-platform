@@ -51,7 +51,7 @@
 
                 <!-- Desktop Navigation Links -->
                 <div class="hidden md:flex items-center space-x-1 lg:space-x-4">
-                    <a href="{% url 'notes:home' %}" class="px-3 py-2 text-sm font-medium text-slate-600 hover:text-sky-600 hover:bg-sky-50 rounded-lg transition-colors">
+                    <a href="{% url 'notes:browse' %}" class="px-3 py-2 text-sm font-medium text-slate-600 hover:text-sky-600 hover:bg-sky-50 rounded-lg transition-colors">
                         Browse Notes
                     </a>
                     {% if user.is_authenticated %}
@@ -103,7 +103,7 @@
             <!-- Mobile Navigation Drawer -->
             <div id="mobile-menu" class="hidden md:hidden pb-4 pt-2 border-t border-slate-100">
                 <div class="flex flex-col space-y-1">
-                    <a href="{% url 'notes:home' %}" class="px-3 py-2 text-base font-medium text-slate-600 hover:text-sky-600 hover:bg-sky-50 rounded-lg">
+                    <a href="{% url 'notes:browse' %}" class="px-3 py-2 text-base font-medium text-slate-600 hover:text-sky-600 hover:bg-sky-50 rounded-lg">
                         Browse Notes
                     </a>
                     {% if user.is_authenticated %}
@@ -182,7 +182,7 @@
                     </div>
                 </div>
                 <div class="flex items-center space-x-6 text-xs text-slate-500 font-medium">
-                    <a href="{% url 'notes:home' %}" class="hover:text-sky-600 transition-colors">Browse Notes</a>
+                    <a href="{% url 'notes:browse' %}" class="hover:text-sky-600 transition-colors">Browse Notes</a>
                     <a href="#" class="hover:text-sky-600 transition-colors">Upload Guide</a>
                     <a href="#" class="hover:text-sky-600 transition-colors">Academic Honor Code</a>
                     <a href="#" class="hover:text-sky-600 transition-colors">Privacy</a>

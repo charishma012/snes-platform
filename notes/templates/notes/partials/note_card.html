@@ -1,0 +1,70 @@
+<article class="bg-white rounded-2xl border border-slate-200/90 shadow-sm hover:shadow-md hover:border-sky-300 transition-all flex flex-col justify-between overflow-hidden group">
+    <div class="p-5 flex-1 flex flex-col space-y-3">
+        <!-- Badges Bar -->
+        <div class="flex flex-wrap items-center gap-2">
+            <!-- Category Badge -->
+            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold
+                {% if note.category == 'NOTES' %}bg-sky-50 text-sky-700 border border-sky-200
+                {% elif note.category == 'CHEAT_SHEET' %}bg-amber-50 text-amber-800 border border-amber-200
+                {% elif note.category == 'PYQ' %}bg-emerald-50 text-emerald-800 border border-emerald-200
+                {% else %}bg-purple-50 text-purple-800 border border-purple-200{% endif %}">
+                {{ note.get_category_display }}
+            </span>
+
+            <!-- Year Badge -->
+            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-slate-100 text-slate-700 border border-slate-200">
+                {% if note.year == 0 %}General{% else %}{{ note.year }}{% endif %}
+            </span>
+
+            <!-- Format & Page Count Badge -->
+            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-slate-50 text-slate-600 border border-slate-200 ml-auto">
+                {% if note.page_count %}
+                    {{ note.page_count }} page{{ note.page_count|pluralize }} &bull; {{ note.file_extension }}
+                {% else %}
+                    {{ note.file_extension }}
+                {% endif %}
+            </span>
+        </div>
+
+        <!-- Title -->
+        <h3 class="text-base sm:text-lg font-bold text-slate-900 group-hover:text-sky-600 transition-colors line-clamp-2">
+            <a href="{% url 'notes:note_detail' note.pk %}" class="focus:outline-none focus:underline">
+                {{ note.title }}
+            </a>
+        </h3>
+
+        <!-- Subject & Topic -->
+        <div class="text-xs font-medium text-slate-500 flex items-center space-x-1.5 flex-wrap">
+            <span class="text-slate-800 font-semibold truncate max-w-[140px] sm:max-w-[180px]">{{ note.subject }}</span>
+            <span class="text-slate-300">•</span>
+            <span class="text-slate-600 truncate max-w-[140px] sm:max-w-[180px]">{{ note.topic }}</span>
+        </div>
+
+        {% if note.description %}
+            <p class="text-xs text-slate-500 line-clamp-2 leading-relaxed">
+                {{ note.description }}
+            </p>
+        {% endif %}
+    </div>
+
+    <!-- Metrics Footer -->
+    <div class="px-5 py-3 bg-slate-50 border-t border-slate-100 flex items-center justify-between text-xs text-slate-600">
+        <!-- Uploader -->
+        <div class="flex items-center space-x-1.5 truncate max-w-[50%]" title="Uploaded by {{ note.uploader.username }}">
+            <svg class="w-3.5 h-3.5 text-slate-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+            </svg>
+            <span class="truncate font-medium text-slate-700">{{ note.uploader.username }}</span>
+        </div>
+
+        <!-- Metrics: Net Vote Score & Downloads -->
+        <div class="flex items-center space-x-3.5 flex-shrink-0 font-medium">
+            <span class="inline-flex items-center font-bold text-slate-700" title="Community Net Vote Score">
+                <span class="text-emerald-600 mr-1">▲</span> {{ note.vote_score }}
+            </span>
+            <span class="inline-flex items-center text-slate-700 font-medium" title="Downloads">
+                <span class="text-sky-600 mr-1">⬇</span> {{ note.downloads }}
+            </span>
+        </div>
+    </div>
+</article>
