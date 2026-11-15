@@ -637,14 +637,38 @@ class NoteViewsAndPermissionsTests(TestCase):
         self.assertContains(response, "<iframe", html=False)
 
     def test_note_detail_pptx_preview_and_local_notice(self):
-        """PPTX note detail renders Office Online iframe and local dev notice."""
+        """PPTX note detail always renders Office Online iframe and fallback download without local dev notice."""
         response = self.client.get(
             reverse("notes:note_detail", kwargs={"pk": self.pptx_note.pk})
         )
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "view.officeapps.live.com")
-        self.assertContains(response, "Local Development Notice")
-        self.assertContains(response, "Render")
+        self.assertNotContains(response, "Local Development Notice")
+        self.assertContains(response, "Download Presentation")
+        self.assertIn("full_file_url", response.context)
+
+    def test_navbar_admin_panel_link_visibility(self):
+        """Admin Panel link (/admin/) is only visible for authenticated staff users."""
+        # 1. Anonymous user cannot see Admin Panel link
+        response = self.client.get(reverse("notes:home"))
+        self.assertNotContains(response, 'href="/admin/"')
+        self.assertNotContains(response, "Admin Panel")
+
+        # 2. Regular authenticated non-staff user cannot see Admin Panel link
+        self.client.login(username="student1", password="securepassword123")
+        response = self.client.get(reverse("notes:home"))
+        self.assertNotContains(response, 'href="/admin/"')
+        self.assertNotContains(response, "Admin Panel")
+        self.client.logout()
+
+        # 3. Authenticated staff user sees Admin Panel link in navbar
+        staff_user = User.objects.create_user(
+            username="staff_admin", password="securepassword123", is_staff=True
+        )
+        self.client.login(username="staff_admin", password="securepassword123")
+        response = self.client.get(reverse("notes:home"))
+        self.assertContains(response, 'href="/admin/"')
+        self.assertContains(response, "Admin Panel")
 
     def test_note_detail_owner_actions_visibility(self):
         """Edit and Delete buttons appear ONLY for note uploader."""

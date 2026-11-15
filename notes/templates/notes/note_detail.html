@@ -183,24 +183,11 @@
             </div>
 
         {% elif note.file_type == "PPTX" %}
-            <!-- PPTX Preview Container with Local Development Notice -->
+            <!-- PPTX Slide Viewer -->
             <div class="space-y-4">
-                <!-- Local Development Notice -->
-                <div class="p-4 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 text-xs sm:text-sm flex items-start space-x-3">
-                    <svg class="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                    <div class="space-y-1">
-                        <p class="font-semibold text-amber-900">Local Development Notice (PPTX Slide Viewer)</p>
-                        <p class="text-amber-800 leading-relaxed text-xs">
-                            In-browser presentation rendering uses external cloud viewers (Microsoft Office Online / Google Docs Viewer), which require a publicly accessible HTTPS URL. In local development (<code class="bg-amber-100/80 px-1 py-0.5 rounded font-mono text-[11px]">localhost</code> / <code class="bg-amber-100/80 px-1 py-0.5 rounded font-mono text-[11px]">127.0.0.1</code>), cloud services cannot fetch local files. <strong>Once deployed to production on Render with a public HTTPS URL, the presentation viewer will load slides seamlessly.</strong> Use the direct download button below to view slides locally.
-                        </p>
-                    </div>
-                </div>
-
                 <!-- Office Online Preview Iframe -->
                 <div class="relative w-full rounded-xl overflow-hidden border border-slate-200 bg-slate-50">
-                    <iframe src="https://view.officeapps.live.com/op/embed.aspx?src={{ preview_url|urlencode }}" class="w-full h-[650px] rounded-lg border" title="{{ note.title }}">
+                    <iframe src="https://view.officeapps.live.com/op/embed.aspx?src={{ full_file_url|urlencode }}" class="w-full h-[650px] rounded-lg border" title="{{ note.title }}">
                         <p class="p-4 text-sm text-slate-500">Your browser does not support embedded frames.</p>
                     </iframe>
                 </div>

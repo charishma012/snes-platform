@@ -227,16 +227,17 @@ def note_detail(request: HttpRequest, pk: int) -> HttpResponse:
     Accessible to both anonymous and authenticated visitors.
     """
     note = get_object_or_404(Note, pk=pk)
-    preview_url = ""
+    full_file_url = ""
     if note.file and note.file.name:
-        preview_url = request.build_absolute_uri(note.file.url)
+        full_file_url = request.build_absolute_uri(note.file.url)
 
     return render(
         request,
         "notes/note_detail.html",
         {
             "note": note,
-            "preview_url": preview_url,
+            "preview_url": full_file_url,
+            "full_file_url": full_file_url,
         },
     )
 
