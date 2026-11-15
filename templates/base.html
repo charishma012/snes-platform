@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full bg-slate-50">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}SNES - Smart Notes Exchange System{% endblock %}</title>
+    <!-- Tailwind CSS (Play CDN) -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: {
+                            50: '#f0f7ff',
+                            100: '#e0effe',
+                            200: '#bae0fd',
+                            600: '#0284c7',
+                            700: '#0369a1',
+                            800: '#075985',
+                            900: '#0c4a6e',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- HTMX CDN -->
+    <script src="https://unpkg.com/htmx.org@2.0.4" integrity="sha384-HGfztofotfshcF7+8n44JQL2oJmzkSZnJTNHY36wEKyWY3MXMF9cvG3v00c4bOMo" crossorigin="anonymous"></script>
+    {% block extra_head %}{% endblock %}
+</head>
+<body class="flex flex-col min-h-full text-slate-800 antialiased" hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'>
+    <!-- Header / Academic Navbar -->
+    <header class="sticky top-0 z-50 bg-white/95 backdrop-blur border-b border-slate-200 shadow-sm">
+        <nav class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between items-center h-16">
+                <!-- Brand / Logo -->
+                <div class="flex items-center space-x-3">
+                    <a href="{% url 'notes:home' %}" class="flex items-center space-x-2 group">
+                        <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-sky-600 to-indigo-600 flex items-center justify-center text-white font-bold text-lg shadow-md group-hover:scale-105 transition-transform">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+                            </svg>
+                        </div>
+                        <div class="flex flex-col">
+                            <span class="font-extrabold text-xl tracking-tight text-slate-900 group-hover:text-sky-600 transition-colors">SNES</span>
+                            <span class="text-[10px] font-semibold text-slate-400 uppercase tracking-wider -mt-1">Smart Notes</span>
+                        </div>
+                    </a>
+                </div>
+
+                <!-- Desktop Navigation Links -->
+                <div class="hidden md:flex items-center space-x-1 lg:space-x-4">
+                    <a href="#" class="px-3 py-2 text-sm font-medium text-slate-600 hover:text-sky-600 hover:bg-sky-50 rounded-lg transition-colors">
+                        Browse Notes
+                    </a>
+                    <a href="#" class="px-3 py-2 text-sm font-medium text-slate-600 hover:text-sky-600 hover:bg-sky-50 rounded-lg transition-colors">
+                        Upload
+                    </a>
+                    <a href="#" class="px-3 py-2 text-sm font-medium text-slate-600 hover:text-sky-600 hover:bg-sky-50 rounded-lg transition-colors">
+                        My Study List
+                    </a>
+                </div>
+
+                <!-- Auth / CTA Actions -->
+                <div class="hidden md:flex items-center space-x-3">
+                    <a href="#" class="px-4 py-2 text-sm font-medium text-slate-700 hover:text-sky-600 rounded-lg transition-colors">
+                        Login
+                    </a>
+                    <a href="#" class="px-4 py-2 text-sm font-medium text-white bg-sky-600 hover:bg-sky-700 rounded-lg shadow-sm hover:shadow transition-all">
+                        Register
+                    </a>
+                </div>
+
+                <!-- Mobile Menu Button -->
+                <div class="flex md:hidden items-center">
+                    <button type="button" id="mobile-menu-btn" aria-label="Toggle Navigation Menu" class="p-2 rounded-lg text-slate-600 hover:text-slate-900 hover:bg-slate-100 focus:outline-none">
+                        <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
+                        </svg>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Mobile Navigation Drawer -->
+            <div id="mobile-menu" class="hidden md:hidden pb-4 pt-2 border-t border-slate-100">
+                <div class="flex flex-col space-y-1">
+                    <a href="#" class="px-3 py-2 text-base font-medium text-slate-600 hover:text-sky-600 hover:bg-sky-50 rounded-lg">
+                        Browse Notes
+                    </a>
+                    <a href="#" class="px-3 py-2 text-base font-medium text-slate-600 hover:text-sky-600 hover:bg-sky-50 rounded-lg">
+                        Upload
+                    </a>
+                    <a href="#" class="px-3 py-2 text-base font-medium text-slate-600 hover:text-sky-600 hover:bg-sky-50 rounded-lg">
+                        My Study List
+                    </a>
+                    <div class="pt-2 border-t border-slate-100 flex flex-col space-y-2">
+                        <a href="#" class="px-3 py-2 text-center text-base font-medium text-slate-700 hover:text-sky-600 rounded-lg">
+                            Login
+                        </a>
+                        <a href="#" class="px-3 py-2 text-center text-base font-medium text-white bg-sky-600 hover:bg-sky-700 rounded-lg shadow-sm">
+                            Register
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </nav>
+    </header>
+
+    <!-- Flash Messages Banner Area -->
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full mt-4">
+        {% if messages %}
+            <div class="space-y-3">
+                {% for message in messages %}
+                    <div class="flex items-center justify-between p-4 rounded-xl text-sm border shadow-sm
+                        {% if message.tags == 'error' %}bg-rose-50 border-rose-200 text-rose-800
+                        {% elif message.tags == 'warning' %}bg-amber-50 border-amber-200 text-amber-800
+                        {% elif message.tags == 'success' %}bg-emerald-50 border-emerald-200 text-emerald-800
+                        {% else %}bg-sky-50 border-sky-200 text-sky-800{% endif %}">
+                        <div class="flex items-center space-x-3">
+                            <span class="font-semibold uppercase tracking-wider text-xs px-2 py-0.5 rounded bg-white/70">
+                                {{ message.tags|default:"Notice" }}
+                            </span>
+                            <span>{{ message }}</span>
+                        </div>
+                        <button type="button" onclick="this.parentElement.remove()" class="text-slate-400 hover:text-slate-700 text-lg leading-none">&times;</button>
+                    </div>
+                {% endfor %}
+            </div>
+        {% endif %}
+    </div>
+
+    <!-- Main Content Area -->
+    <main class="flex-grow">
+        {% block content %}{% endblock %}
+    </main>
+
+    <!-- Academic Footer -->
+    <footer class="bg-white border-t border-slate-200 mt-16">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-12">
+            <div class="flex flex-col md:flex-row justify-between items-center space-y-4 md:space-y-0 text-center md:text-left">
+                <div class="flex items-center space-x-3">
+                    <div class="w-8 h-8 rounded-lg bg-slate-900 flex items-center justify-center text-white font-bold text-sm">
+                        SNES
+                    </div>
+                    <div>
+                        <p class="text-sm font-semibold text-slate-800">Smart Notes Exchange System</p>
+                        <p class="text-xs text-slate-500">Collaborative academic study materials platform (PDF & PPTX)</p>
+                    </div>
+                </div>
+                <div class="flex items-center space-x-6 text-xs text-slate-500 font-medium">
+                    <a href="#" class="hover:text-sky-600 transition-colors">Browse Notes</a>
+                    <a href="#" class="hover:text-sky-600 transition-colors">Upload Guide</a>
+                    <a href="#" class="hover:text-sky-600 transition-colors">Academic Honor Code</a>
+                    <a href="#" class="hover:text-sky-600 transition-colors">Privacy</a>
+                </div>
+                <p class="text-xs text-slate-400">
+                    &copy; {% now "Y" %} SNES Platform. Built with Django & Tailwind.
+                </p>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Interactive Scripts -->
+    <script>
+        // Simple toggle for mobile navbar
+        const menuBtn = document.getElementById('mobile-menu-btn');
+        const mobileMenu = document.getElementById('mobile-menu');
+        if (menuBtn && mobileMenu) {
+            menuBtn.addEventListener('click', () => {
+                mobileMenu.classList.toggle('hidden');
+            });
+        }
+    </script>
+    {% block extra_js %}{% endblock %}
+</body>
+</html>
