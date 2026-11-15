@@ -26,7 +26,7 @@
         }
     </script>
     <!-- HTMX CDN -->
-    <script src="https://unpkg.com/htmx.org@2.0.4" integrity="sha384-HGfztofotfshcF7+8n44JQL2oJmzkSZnJTNHY36wEKyWY3MXMF9cvG3v00c4bOMo" crossorigin="anonymous"></script>
+    <script src="https://unpkg.com/htmx.org@2.0.4"></script>
     {% block extra_head %}{% endblock %}
 </head>
 <body class="flex flex-col min-h-full text-slate-800 antialiased" hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'>
@@ -204,6 +204,11 @@
                 mobileMenu.classList.toggle('hidden');
             });
         }
+
+        // Configure HTMX CSRF token on all requests
+        document.body.addEventListener('htmx:configRequest', function (event) {
+            event.detail.headers['X-CSRFToken'] = '{{ csrf_token }}';
+        });
     </script>
     {% block extra_js %}{% endblock %}
 </body>
