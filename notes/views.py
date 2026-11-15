@@ -41,8 +41,8 @@ def home(request: HttpRequest) -> HttpResponse:
     - Latest 6 recently uploaded notes
     """
     base_qs = get_annotated_notes()
-    top_notes = base_qs.order_by("-quality_score", "-created_at")[:6]
-    recent_notes = base_qs.order_by("-created_at")[:6]
+    top_notes = base_qs.order_by("-quality_score", "-created_at", "-id")[:6]
+    recent_notes = base_qs.order_by("-created_at", "-id")[:6]
 
     return render(
         request,
@@ -97,13 +97,13 @@ def browse_notes(request: HttpRequest) -> HttpResponse:
 
     # Sorting
     if sort == "recent":
-        queryset = queryset.order_by("-created_at")
+        queryset = queryset.order_by("-created_at", "-id")
     elif sort == "downloads":
-        queryset = queryset.order_by("-downloads", "-created_at")
+        queryset = queryset.order_by("-downloads", "-created_at", "-id")
     else:
-        # Default: "top" (quality_score descending, then -created_at)
+        # Default: "top" (quality_score descending, then -created_at, -id)
         sort = "top"
-        queryset = queryset.order_by("-quality_score", "-created_at")
+        queryset = queryset.order_by("-quality_score", "-created_at", "-id")
 
     # Pagination: 12 notes per page
     paginator = Paginator(queryset, 12)
