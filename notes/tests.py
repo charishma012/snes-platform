@@ -635,6 +635,9 @@ class NoteViewsAndPermissionsTests(TestCase):
         self.assertContains(response, "Cheat Sheet / Summary")
         self.assertContains(response, "4 pages")
         self.assertContains(response, "<iframe", html=False)
+        self.assertContains(response, "docs.google.com/gview?url=")
+        self.assertContains(response, "Open PDF Directly")
+        self.assertIn("full_file_url", response.context)
 
     def test_note_detail_pptx_preview_and_local_notice(self):
         """PPTX note detail always renders Office Online iframe and fallback download without local dev notice."""

@@ -52,6 +52,16 @@
                 </form>
             {% endif %}
 
+            <!-- Open PDF Directly (for PDF) & Download Button -->
+            {% if note.file_type == "PDF" and full_file_url %}
+                <a href="{{ full_file_url }}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center space-x-1.5 px-3.5 py-2 rounded-xl border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 text-xs sm:text-sm font-semibold shadow-sm transition">
+                    <svg class="w-4 h-4 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                    </svg>
+                    <span>Open PDF Directly</span>
+                </a>
+            {% endif %}
+
             <!-- Download Button -->
             <a href="{% url 'notes:download_note' note.pk %}" class="inline-flex items-center space-x-2 px-4 py-2 rounded-xl bg-sky-600 hover:bg-sky-700 text-white text-xs sm:text-sm font-semibold shadow-sm hover:shadow transition">
                 <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -163,23 +173,58 @@
         </div>
 
         {% if note.file_type == "PDF" %}
-            <!-- In-Browser PDF Preview -->
-            <div class="relative w-full rounded-xl overflow-hidden border border-slate-200 bg-slate-100">
-                <iframe src="{{ note.file.url }}" class="w-full h-[650px] rounded-lg border" title="{{ note.title }}">
-                    <div class="p-8 text-center text-slate-600 space-y-3">
-                        <p class="text-base font-semibold">Inline PDF preview is not supported by your browser.</p>
-                        <p class="text-sm text-slate-500">You can download the file to read it with your preferred document viewer.</p>
-                        <a href="{% url 'notes:download_note' note.pk %}" class="inline-flex px-4 py-2 rounded-xl bg-sky-600 text-white text-sm font-semibold hover:bg-sky-700 transition">
-                            Download PDF
+            <!-- Google Docs In-Browser PDF Preview -->
+            <div class="space-y-4">
+                <div class="relative w-full rounded-xl overflow-hidden border border-slate-200 bg-slate-100">
+                    <iframe src="https://docs.google.com/gview?url={{ full_file_url|urlencode }}&embedded=true" class="h-[500px] md:h-[650px] w-full rounded-lg border" title="{{ note.title }}">
+                        <div class="p-8 text-center text-slate-600 space-y-3">
+                            <p class="text-base font-semibold">Inline PDF preview is not supported by your browser.</p>
+                            <p class="text-sm text-slate-500">You can open the PDF directly or download the file to read it with your preferred document viewer.</p>
+                            <div class="flex flex-wrap items-center justify-center gap-3">
+                                {% if full_file_url %}
+                                    <a href="{{ full_file_url }}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center space-x-1.5 px-4 py-2 rounded-xl bg-white border border-slate-300 text-slate-700 text-sm font-semibold hover:bg-slate-50 transition">
+                                        <svg class="w-4 h-4 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                                        </svg>
+                                        <span>Open PDF Directly</span>
+                                    </a>
+                                {% endif %}
+                                <a href="{% url 'notes:download_note' note.pk %}" class="inline-flex px-4 py-2 rounded-xl bg-sky-600 text-white text-sm font-semibold hover:bg-sky-700 transition">
+                                    Download PDF
+                                </a>
+                            </div>
+                        </div>
+                    </iframe>
+                </div>
+
+                <!-- Fallback / Mobile Direct Actions Box -->
+                <div class="p-4 rounded-xl bg-slate-50 border border-slate-200 flex flex-col sm:flex-row items-center justify-between gap-3">
+                    <div class="flex items-center space-x-3 text-sm text-slate-700">
+                        <div class="w-9 h-9 rounded-lg bg-rose-100 text-rose-600 flex items-center justify-center font-bold text-xs">
+                            PDF
+                        </div>
+                        <div>
+                            <p class="font-semibold text-slate-800">PDF Document</p>
+                            <p class="text-xs text-slate-500">For the best mobile experience, open directly in your phone's reader or download.</p>
+                        </div>
+                    </div>
+                    <div class="flex flex-wrap items-center gap-2.5 w-full sm:w-auto">
+                        {% if full_file_url %}
+                            <a href="{{ full_file_url }}" target="_blank" rel="noopener noreferrer" class="flex-1 sm:flex-none inline-flex items-center justify-center space-x-1.5 px-4 py-2.5 rounded-xl border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 text-xs sm:text-sm font-semibold shadow-sm transition text-center">
+                                <svg class="w-4 h-4 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                                </svg>
+                                <span>Open PDF Directly</span>
+                            </a>
+                        {% endif %}
+                        <a href="{% url 'notes:download_note' note.pk %}" class="flex-1 sm:flex-none inline-flex items-center justify-center space-x-1.5 px-5 py-2.5 rounded-xl bg-sky-600 hover:bg-sky-700 text-white text-xs sm:text-sm font-semibold shadow-sm transition text-center">
+                            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                            </svg>
+                            <span>Download PDF</span>
                         </a>
                     </div>
-                </iframe>
-            </div>
-            <div class="flex items-center justify-between text-xs text-slate-500 pt-1 px-1">
-                <span>Displaying embedded PDF viewer.</span>
-                <a href="{{ note.file.url }}" target="_blank" rel="noopener noreferrer" class="text-sky-600 hover:text-sky-800 underline">
-                    Open PDF in separate tab &rarr;
-                </a>
+                </div>
             </div>
 
         {% elif note.file_type == "PPTX" %}
@@ -187,7 +232,7 @@
             <div class="space-y-4">
                 <!-- Office Online Preview Iframe -->
                 <div class="relative w-full rounded-xl overflow-hidden border border-slate-200 bg-slate-50">
-                    <iframe src="https://view.officeapps.live.com/op/embed.aspx?src={{ full_file_url|urlencode }}" class="w-full h-[650px] rounded-lg border" title="{{ note.title }}">
+                    <iframe src="https://view.officeapps.live.com/op/embed.aspx?src={{ full_file_url|urlencode }}" class="h-[500px] md:h-[650px] w-full rounded-lg border" title="{{ note.title }}">
                         <p class="p-4 text-sm text-slate-500">Your browser does not support embedded frames.</p>
                     </iframe>
                 </div>

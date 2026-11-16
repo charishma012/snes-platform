@@ -227,9 +227,7 @@ def note_detail(request: HttpRequest, pk: int) -> HttpResponse:
     Accessible to both anonymous and authenticated visitors.
     """
     note = get_object_or_404(Note, pk=pk)
-    full_file_url = ""
-    if note.file and note.file.name:
-        full_file_url = request.build_absolute_uri(note.file.url)
+    full_file_url = request.build_absolute_uri(note.file.url) if note.file else ""
 
     return render(
         request,
