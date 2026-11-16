@@ -155,9 +155,13 @@ if USE_S3_STORAGE:
     AWS_STORAGE_BUCKET_NAME = os.getenv('AWS_STORAGE_BUCKET_NAME')
     AWS_S3_ENDPOINT_URL = os.getenv('AWS_S3_ENDPOINT_URL')
     AWS_S3_REGION_NAME = os.getenv('AWS_S3_REGION_NAME', 'auto')
-    AWS_S3_ADDRESSING_STYLE = "path"
-    AWS_S3_CUSTOM_DOMAIN = os.getenv('AWS_S3_CUSTOM_DOMAIN') or None
     AWS_QUERYSTRING_AUTH = False
+
+    # Build Supabase public delivery domain automatically from endpoint URL
+    AWS_S3_CUSTOM_DOMAIN = os.getenv('AWS_S3_CUSTOM_DOMAIN') or None
+    if not AWS_S3_CUSTOM_DOMAIN and AWS_S3_ENDPOINT_URL and '.supabase.co' in AWS_S3_ENDPOINT_URL:
+        project_host = AWS_S3_ENDPOINT_URL.split('//')[1].split('/')[0]
+        AWS_S3_CUSTOM_DOMAIN = f"{project_host}/storage/v1/object/public/{AWS_STORAGE_BUCKET_NAME}"
 
     s3_options = {
         'access_key': AWS_ACCESS_KEY_ID,
@@ -166,6 +170,7 @@ if USE_S3_STORAGE:
         'endpoint_url': AWS_S3_ENDPOINT_URL,
         'region_name': AWS_S3_REGION_NAME,
         'querystring_auth': AWS_QUERYSTRING_AUTH,
+        'addressing_style': 'path',
     }
     if AWS_S3_CUSTOM_DOMAIN:
         s3_options['custom_domain'] = AWS_S3_CUSTOM_DOMAIN
@@ -174,15 +179,6 @@ if USE_S3_STORAGE:
         'default': {
             'BACKEND': 'storages.backends.s3.S3Storage',
             'OPTIONS': s3_options,
-        },
-        'staticfiles': {
-            'BACKEND': 'whitenoise.storage.CompressedManifestStaticFilesStorage',
-        },
-    }
-else:
-    STORAGES = {
-        'default': {
-            'BACKEND': 'django.core.files.storage.FileSystemStorage',
         },
         'staticfiles': {
             'BACKEND': 'whitenoise.storage.CompressedManifestStaticFilesStorage',
